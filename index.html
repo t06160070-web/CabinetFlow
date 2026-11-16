@@ -2,7 +2,9 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>系統櫃訂單分板系統 (優化版)</title>
+    <title>系統櫃訂單分板系統 (含 QR 掃描)</title>
+    <!-- 引入輕量級 QR Code 掃描庫 html5-qrcode -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         * { box-sizing: border-box; font-family: "Microsoft JhengHei", sans-serif; }
         body { background: #eef2f6; padding: 20px; margin: 0; color: #1f2937; }
@@ -22,6 +24,7 @@
         .btn-primary { background: #2563eb; color: #fff; font-size: 15px; }
         .btn-back { background: #4b5563; color: #fff; }
         .btn-export { background: #059669; color: #fff; }
+        .btn-scan { background: #7c3aed; color: #fff; font-size: 15px; }
         .btn-del { background: #ef4444; color: #fff; padding: 5px 10px; font-size: 13px; }
         .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; }
         .order-item { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; cursor: pointer; position: relative; }
@@ -45,6 +48,10 @@
         table.catalog-table { width: 100%; border-collapse: collapse; }
         .catalog-table th, .catalog-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 15px; }
         .catalog-table th { background: #f8fafc; color: #334155; }
+        
+        /* 掃描器 Modal 樣式 */
+        #scannerModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; flex-direction: column; }
+        #scannerContainer { width: 100%; max-width: 400px; background: #fff; padding: 20px; border-radius: 12px; text-align: center; }
     </style>
 </head>
 <body>
@@ -53,13 +60,15 @@
         <button id="tabOrdersBtn" class="tab-btn active" onclick="switchPage('orders')">📋 訂單分板作業</button>
         <button id="tabCatalogBtn" class="tab-btn" onclick="switchPage('catalog')">🎨 色號與木名對照表管理</button>
     </div>
+    
     <div id="pageOrders">
         <div id="viewOrders">
             <div class="card">
                 <div class="header-bar"><h2>步驟 1：建立或選擇訂單號</h2><button onclick="exportAllCSV()" class="btn btn-export">匯出全部訂單 Excel</button></div>
                 <form id="createOrderForm" class="row">
-                    <div class="field" style="max-width: 320px;"><label>新訂單號 *</label><input type="text" id="newOrderId" placeholder="輸入訂單號 (例: ORD-202601)" required autocomplete="off"></div>
+                    <div class="field" style="max-width: 280px;"><label>新訂單號 *</label><input type="text" id="newOrderId" placeholder="輸入訂單號或掃描" required autocomplete="off"></div>
                     <button type="submit" class="btn btn-primary">建立並進入訂單</button>
+                    <button type="button" onclick="startQrScanner()" class="btn btn-scan">📷 掃描 QR 條碼開單</button>
                 </form>
             </div>
             <div class="card">
@@ -67,6 +76,7 @@
                 <div id="orderListGrid" class="order-grid"></div>
             </div>
         </div>
+        
         <div id="viewDetail" style="display: none;">
             <div class="card">
                 <div class="header-bar">
@@ -104,7 +114,7 @@
         </div>
         <div class="card">
             <div class="header-bar"><h2>📥 批次匯入色號對照表（支援直接從 Excel 複製貼上）</h2></div>
-            <p style="font-size:13px; color:#4b5563; margin-top:0;">格式：<strong>一行一筆</strong>，色號與木名之間用 <strong>Tab（複製 Excel 兩欄）</strong>、<strong>空格</strong> 或 <strong>逗號</strong> 分隔即可。</p>
+            <p style="font-size:13px; color:#4b5563; margin-top:0;">格式：<strong>一行一筆</strong>，色號與木名之間用 <strong>Tab</strong>、<strong>空格</strong> 或 <strong>逗號</strong> 分隔即可。</p>
             <textarea id="batchInput" rows="5" style="width:100%;" placeholder="貼上範例：&#10;H3303	漢密爾頓橡木&#10;701	雪白"></textarea>
             <div style="margin-top: 10px; display:flex; justify-content:space-between;">
                 <button type="button" onclick="batchImportCatalog()" class="btn btn-export">⚡ 執行批次匯入</button>
@@ -120,10 +130,21 @@
         </div>
     </div>
 </div>
+
+<!-- QR 掃描彈窗 -->
+<div id="scannerModal">
+    <div id="scannerContainer">
+        <h3 style="margin-top:0; color:#1e3a8a;">請對準訂單 QR Code</h3>
+        <div id="reader" style="width:100%;"></div>
+        <button type="button" onclick="stopQrScanner()" class="btn btn-back" style="margin-top:15px; width:100%;">關閉相機</button>
+    </div>
+</div>
+
 <script>
     let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDB')) || {};
     let colorCatalog = JSON.parse(localStorage.getItem('colorCatalogDB')) || {};
     let currentOrder = null;
+    let html5QrCode = null;
 
     renderOrderList();
     updateColorDatalist();
@@ -137,16 +158,53 @@
         if (page === 'orders' && !currentOrder) renderOrderList();
     }
 
-    // 安全跳脫字元處理 (防止 XSS 與特殊符號破壞 HTML)
     function escapeHtml(str) {
         if (!str) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
+
+    // --- QR Code 掃描相關邏輯 ---
+    function startQrScanner() {
+        document.getElementById('scannerModal').style.display = 'flex';
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader");
+        }
+        html5QrCode.start(
+            { facingMode: "environment" }, // 預設使用後鏡頭
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+                // 成功掃描到 QR Code
+                stopQrScanner();
+                const orderId = decodedText.trim();
+                if (orderId) {
+                    if (!ordersDB[orderId]) {
+                        ordersDB[orderId] = [];
+                        saveOrders();
+                    }
+                    openOrder(orderId);
+                }
+            },
+            (errorMessage) => {
+                // 掃描中（未對準時會持續回報，不需特別處理）
+            }
+        ).catch(err => {
+            alert('無法開啟相機，請確認是否授權相機權限或使用 HTTPS 連線！');
+            stopQrScanner();
+        });
+    }
+
+    function stopQrScanner() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().then(() => {
+                document.getElementById('scannerModal').style.display = 'none';
+            }).catch(err => {
+                document.getElementById('scannerModal').style.display = 'none';
+            });
+        } else {
+            document.getElementById('scannerModal').style.display = 'none';
+        }
+    }
+    // ----------------------------
 
     document.getElementById('catalogForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -237,10 +295,8 @@
     const colorInput = document.getElementById('colorCode');
     const woodInput = document.getElementById('woodName');
 
-    // ⚡ 優化：直接透過 O(1) 索引對照，不用每次都用 .find() 掃描整個物件
     colorInput.addEventListener('input', function() {
         const code = this.value.trim();
-        // 支援精準對應或忽略大小寫比對
         const matchedKey = Object.keys(colorCatalog).find(k => k.toLowerCase() === code.toLowerCase());
         if (matchedKey) {
             woodInput.value = colorCatalog[matchedKey];
@@ -302,113 +358,8 @@
         saveOrders(); 
         renderDetailTable();
         
-        // ⚡ 操作優化：清空輸入並自動將焦點移回色號，方便連續輸入下一個色號
         colorInput.value = ''; 
         woodInput.value = '';
         document.getElementById('nestingQty').value = ''; 
         document.getElementById('sawQty').value = '';
         colorInput.focus();
-    });
-
-    function deleteColorRow(idx) { 
-        ordersDB[currentOrder].splice(idx, 1); 
-        saveOrders(); 
-        renderDetailTable(); 
-    }
-    
-    function deleteOrder(e, id) { 
-        e.stopPropagation(); 
-        if (confirm(`刪除訂單「${id}」及其所有分板明細？`)) { 
-            delete ordersDB[id]; 
-            saveOrders(); 
-            renderOrderList(); 
-        } 
-    }
-    
-    function saveOrders() { 
-        localStorage.setItem('ordersMasterDB', JSON.stringify(ordersDB)); 
-    }
-
-    function renderOrderList() {
-        const grid = document.getElementById('orderListGrid');
-        const keys = Object.keys(ordersDB).reverse();
-        grid.innerHTML = keys.length ? keys.map(id => {
-            const items = ordersDB[id];
-            const nSum = items.reduce((s, i) => s + i.nestingQty, 0);
-            const sSum = items.reduce((s, i) => s + i.sawQty, 0);
-            return `
-                <div class="order-item" onclick="openOrder('${escapeHtml(id)}')">
-                    <button class="order-del-top" onclick="deleteOrder(event, '${escapeHtml(id)}')">刪除</button>
-                    <h3>${escapeHtml(id)}</h3>
-                    <div class="order-meta">色號：<strong>${items.length}</strong> 種<br>Nesting：<strong>${nSum}</strong> 片 ｜ 電子鋸：<strong>${sSum}</strong> 片</div>
-                </div>`;
-        }).join('') : `<div style="color:#6b7280;grid-column:1/-1;text-align:center;padding:20px;">尚無訂單</div>`;
-    }
-
-    function renderDetailTable() {
-        const tbody = document.getElementById('detailTableBody');
-        const items = ordersDB[currentOrder] || [];
-        if (!items.length) { 
-            tbody.innerHTML = `<tr><td colspan="5" style="color:#9ca3af;padding:30px;">尚無色號資料</td></tr>`; 
-            return; 
-        }
-
-        let nTotal = 0, sTotal = 0;
-        const rows = items.map((i, idx) => {
-            nTotal += i.nestingQty; 
-            sTotal += i.sawQty;
-            const lbl = `<span class="merged-text">${escapeHtml(i.colorCode)}</span><span class="spec-sub merged-sub">${escapeHtml(i.woodName)}</span>`;
-            return `<tr>
-                <td class="cell-n">${i.nestingQty > 0 ? lbl : ''}</td>
-                <td class="cell-n divider qty-bold">${i.nestingQty > 0 ? i.nestingQty : ''}</td>
-                <td class="cell-s">${i.sawQty > 0 ? lbl : ''}</td>
-                <td class="cell-s qty-bold">${i.sawQty > 0 ? i.sawQty : ''}</td>
-                <td><button class="btn-del" onclick="deleteColorRow(${idx})">刪除</button></td>
-            </tr>`;
-        }).join('');
-        
-        tbody.innerHTML = rows + `
-            <tr class="sum-row">
-                <td style="text-align:right;">Nesting 合計：</td>
-                <td class="divider" style="color:#1e40af;font-size:17px;">${nTotal} 片</td>
-                <td style="text-align:right;">電子鋸 合計：</td>
-                <td style="color:#b45309;font-size:17px;">${sTotal} 片</td>
-                <td></td>
-            </tr>`;
-    }
-
-    function exportSingleCSV() {
-        const items = ordersDB[currentOrder] || [];
-        if (!items.length) return alert('無資料可匯出');
-        let csv = `\uFEFF訂單號,Nesting(色號/木名),Nesting數量,電子鋸(色號/木名),電子鋸數量\n`;
-        items.forEach(i => {
-            const nStr = i.nestingQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
-            const sStr = i.sawQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
-            csv += `"${currentOrder}","${nStr}",${i.nestingQty || ''},"${sStr}",${i.sawQty || ''}\n`;
-        });
-        downloadCSV(csv, `訂單_${currentOrder}.csv`);
-    }
-
-    function exportAllCSV() {
-        const keys = Object.keys(ordersDB);
-        if (!keys.length) return alert('無資料可匯出');
-        let csv = `\uFEFF訂單號,Nesting(色號/木名),Nesting數量,電子鋸(色號/木名),電子鋸數量\n`;
-        keys.forEach(id => {
-            ordersDB[id].forEach(i => {
-                const nStr = i.nestingQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
-                const sStr = i.sawQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
-                csv += `"${id}","${nStr}",${i.nestingQty || ''},"${sStr}",${i.sawQty || ''}\n`;
-            });
-        });
-        downloadCSV(csv, `全部訂單分板總表.csv`);
-    }
-
-    function downloadCSV(csv, name) {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-        a.download = name; 
-        a.click();
-    }
-</script>
-</body>
-</html>
