@@ -2,7 +2,9 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>系統櫃訂單分板系統 (完整完整版)</title>
+    <title>系統櫃訂單分板系統 (含相機掃描)</title>
+    <!-- 引入輕量級 QR Code 掃描庫 -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <style>
         * { box-sizing: border-box; font-family: "Microsoft JhengHei", sans-serif; }
         body { background: #eef2f6; padding: 20px; margin: 0; color: #1f2937; }
@@ -22,6 +24,7 @@
         .btn-primary { background: #2563eb; color: #fff; font-size: 15px; }
         .btn-back { background: #4b5563; color: #fff; }
         .btn-export { background: #059669; color: #fff; }
+        .btn-scan { background: #7c3aed; color: #fff; font-size: 15px; }
         .btn-del { background: #ef4444; color: #fff; padding: 5px 10px; font-size: 13px; }
         .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; }
         .order-item { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; cursor: pointer; position: relative; }
@@ -45,6 +48,11 @@
         table.catalog-table { width: 100%; border-collapse: collapse; }
         .catalog-table th, .catalog-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 15px; }
         .catalog-table th { background: #f8fafc; color: #334155; }
+
+        /* 掃描相機 Modal 樣式 */
+        #scannerModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; flex-direction: column; }
+        #scannerBox { background: #fff; padding: 20px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center; }
+        #videoElement { width: 100%; border-radius: 8px; background: #000; }
     </style>
 </head>
 <body>
@@ -59,8 +67,9 @@
             <div class="card">
                 <div class="header-bar"><h2>步驟 1：建立或選擇訂單號</h2><button onclick="exportAllCSV()" class="btn btn-export">匯出全部訂單 Excel</button></div>
                 <form id="createOrderForm" class="row">
-                    <div class="field" style="max-width: 320px;"><label>新訂單號 *</label><input type="text" id="newOrderId" placeholder="輸入訂單號 (例: ORD-202601)" required autocomplete="off"></div>
+                    <div class="field" style="max-width: 260px;"><label>新訂單號 *</label><input type="text" id="newOrderId" placeholder="輸入訂單號或掃描" required autocomplete="off"></div>
                     <button type="submit" class="btn btn-primary">建立並進入訂單</button>
+                    <button type="button" onclick="openScanner()" class="btn btn-scan">📷 相機掃描 QR</button>
                 </form>
             </div>
             <div class="card">
@@ -123,10 +132,23 @@
     </div>
 </div>
 
+<!-- 相機掃描彈窗 -->
+<div id="scannerModal">
+    <div id="scannerBox">
+        <h3 style="margin-top:0; color:#1e3a8a;">請對準訂單 QR Code</h3>
+        <video id="videoElement" autoplay playsinline></video>
+        <canvas id="canvasElement" style="display:none;"></canvas>
+        <p id="scanStatus" style="font-size:13px; color:#6b7280; margin: 10px 0;">正在啟動相機...</p>
+        <button type="button" onclick="closeScanner()" class="btn btn-back" style="width:100%;">關閉相機</button>
+    </div>
+</div>
+
 <script>
     let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDB')) || {};
     let colorCatalog = JSON.parse(localStorage.getItem('colorCatalogDB')) || {};
     let currentOrder = null;
+    let videoStream = null;
+    let scanningActive = false;
 
     renderOrderList();
     updateColorDatalist();
@@ -145,264 +167,70 @@
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
 
+    // --- 輕量原生相機 QR 掃描邏輯 ---
+    function openScanner() {
+        document.getElementById('scannerModal').style.display = 'flex';
+        document.getElementById('scanStatus').textContent = '正在對焦並尋找 QR Code...';
+        scanningActive = true;
+
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(stream => {
+                videoStream = stream;
+                const video = document.getElementById('videoElement');
+                video.srcObject = stream;
+                video.play();
+                requestAnimationFrame(scanQRCodeTick);
+            })
+            .catch(err => {
+                alert('無法存取相機，請確認是否允許相機權限或使用 HTTPS 連線！');
+                closeScanner();
+            });
+    }
+
+    function scanQRCodeTick() {
+        if (!scanningActive) return;
+        const video = document.getElementById('videoElement');
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            const canvas = document.getElementById('canvasElement');
+            const ctx = canvas.getContext('2d');
+            canvas.height = video.videoHeight;
+            canvas.width = video.videoWidth;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                inversionAttempts: "dontInvert",
+            });
+
+            if (code) {
+                // 成功讀到 QR Code 內容
+                const orderId = code.data.trim();
+                if (orderId) {
+                    closeScanner();
+                    if (!ordersDB[orderId]) {
+                        ordersDB[orderId] = [];
+                        saveOrders();
+                    }
+                    openOrder(orderId);
+                    return;
+                }
+            }
+        }
+        if (scanningActive) {
+            requestAnimationFrame(scanQRCodeTick);
+        }
+    }
+
+    function closeScanner() {
+        scanningActive = false;
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+            videoStream = null;
+        }
+        document.getElementById('scannerModal').style.display = 'none';
+    }
+    // ----------------------------
+
     document.getElementById('catalogForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        const code = document.getElementById('catCode').value.trim();
-        const name = document.getElementById('catName').value.trim();
-        if (!code || !name) return;
-        colorCatalog[code] = name; 
-        saveCatalog();
-        document.getElementById('catCode').value = ''; 
-        document.getElementById('catName').value = '';
-        document.getElementById('catCode').focus(); 
-        renderCatalogTable();
-    });
-
-    function batchImportCatalog() {
-        const text = document.getElementById('batchInput').value.trim();
-        if (!text) return alert('請先貼上要匯入的資料！');
-        let count = 0;
-        text.split(/\r?\n/).forEach(line => {
-            const match = line.trim().match(/^([^\t,，\s]+)[\t,，\s]+(.+)$/);
-            if (match && match[1].trim() && match[2].trim()) {
-                colorCatalog[match[1].trim()] = match[2].trim();
-                count++;
-            }
-        });
-        if (count > 0) { 
-            saveCatalog(); 
-            renderCatalogTable(); 
-            document.getElementById('batchInput').value = ''; 
-            alert(`成功匯入 ${count} 筆！`); 
-        } else {
-            alert('格式無法辨識，請確認每行都有「色號」與「木名」。');
-        }
-    }
-
-    function clearCatalog() { 
-        if (confirm('確定清空全部色號庫？')) { 
-            colorCatalog = {}; 
-            saveCatalog(); 
-            renderCatalogTable(); 
-        } 
-    }
-
-    document.getElementById('searchCatalog').addEventListener('input', renderCatalogTable);
-    
-    function editCatalogItem(code) { 
-        document.getElementById('catCode').value = code; 
-        document.getElementById('catName').value = colorCatalog[code] || ''; 
-        document.getElementById('catName').focus(); 
-    }
-    
-    function deleteCatalogItem(code) { 
-        if (confirm(`刪除色號「${code}」？`)) { 
-            delete colorCatalog[code]; 
-            saveCatalog(); 
-            renderCatalogTable(); 
-        } 
-    }
-    
-    function saveCatalog() { 
-        localStorage.setItem('colorCatalogDB', JSON.stringify(colorCatalog)); 
-        updateColorDatalist(); 
-    }
-    
-    function updateColorDatalist() { 
-        document.getElementById('colorHistoryList').innerHTML = Object.entries(colorCatalog)
-            .map(([c, n]) => `<option value="${escapeHtml(c)}">${escapeHtml(n)}</option>`).join(''); 
-    }
-
-    function renderCatalogTable() {
-        const kw = document.getElementById('searchCatalog').value.trim().toLowerCase();
-        const entries = Object.entries(colorCatalog).filter(([c, n]) => c.toLowerCase().includes(kw) || n.toLowerCase().includes(kw));
-        document.getElementById('catalogCount').textContent = Object.keys(colorCatalog).length;
-        const tbody = document.getElementById('catalogTableBody');
-        
-        tbody.innerHTML = entries.length ? entries.map(([code, name]) => `
-            <tr>
-                <td><strong>${escapeHtml(code)}</strong></td>
-                <td>${escapeHtml(name)}</td>
-                <td>
-                    <button class="btn" style="background:#3b82f6;color:#fff;padding:4px 10px;font-size:12px;" onclick="editCatalogItem('${escapeHtml(code)}')">修改</button>
-                    <button class="btn-del" onclick="deleteCatalogItem('${escapeHtml(code)}')">刪除</button>
-                </td>
-            </tr>
-        `).join('') : `<tr><td colspan="3" style="text-align:center;color:#9ca3af;padding:20px;">無符合資料</td></tr>`;
-    }
-
-    const colorInput = document.getElementById('colorCode');
-    const woodInput = document.getElementById('woodName');
-
-    colorInput.addEventListener('input', function() {
-        const code = this.value.trim();
-        const matchedKey = Object.keys(colorCatalog).find(k => k.toLowerCase() === code.toLowerCase());
-        if (matchedKey) {
-            woodInput.value = colorCatalog[matchedKey];
-        }
-    });
-
-    document.getElementById('createOrderForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const id = document.getElementById('newOrderId').value.trim();
-        if (!id) return;
-        if (!ordersDB[id]) { 
-            ordersDB[id] = []; 
-            saveOrders(); 
-        }
-        document.getElementById('newOrderId').value = '';
-        openOrder(id);
-    });
-
-    function openOrder(orderId) {
-        currentOrder = orderId;
-        document.getElementById('viewOrders').style.display = 'none';
-        document.getElementById('viewDetail').style.display = 'block';
-        document.getElementById('currentOrderTitle').textContent = `訂單號：${orderId}`;
-        renderDetailTable(); 
-        colorInput.focus();
-    }
-
-    function goBack() {
-        currentOrder = null;
-        document.getElementById('viewDetail').style.display = 'none';
-        document.getElementById('viewOrders').style.display = 'block';
-        renderOrderList();
-    }
-
-    document.getElementById('addColorForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const colorCode = colorInput.value.trim();
-        const woodName = woodInput.value.trim();
-        const nQty = parseInt(document.getElementById('nestingQty').value, 10) || 0;
-        const sQty = parseInt(document.getElementById('sawQty').value, 10) || 0;
-        
-        if (nQty === 0 && sQty === 0) return alert('請至少在一邊輸入數量！');
-
-        if (!colorCatalog[colorCode]) { 
-            colorCatalog[colorCode] = woodName; 
-            saveCatalog(); 
-        }
-        
-        const list = ordersDB[currentOrder];
-        const existing = list.find(i => i.colorCode === colorCode);
-        if (existing) { 
-            existing.woodName = woodName; 
-            existing.nestingQty += nQty; 
-            existing.sawQty += sQty; 
-        } else { 
-            list.push({ colorCode, woodName, nestingQty: nQty, sawQty: sQty }); 
-        }
-
-        saveOrders(); 
-        renderDetailTable();
-        
-        colorInput.value = ''; 
-        woodInput.value = '';
-        document.getElementById('nestingQty').value = ''; 
-        document.getElementById('sawQty').value = '';
-        colorInput.focus();
-    });
-
-    function deleteColorRow(idx) { 
-        ordersDB[currentOrder].splice(idx, 1); 
-        saveOrders(); 
-        renderDetailTable(); 
-    }
-    
-    function deleteOrder(e, id) { 
-        e.stopPropagation(); 
-        if (confirm(`刪除訂單「${id}」及其所有分板明細？`)) { 
-            delete ordersDB[id]; 
-            saveOrders(); 
-            renderOrderList(); 
-        } 
-    }
-    
-    function saveOrders() { 
-        localStorage.setItem('ordersMasterDB', JSON.stringify(ordersDB)); 
-    }
-
-    function renderOrderList() {
-        const grid = document.getElementById('orderListGrid');
-        const keys = Object.keys(ordersDB).reverse();
-        grid.innerHTML = keys.length ? keys.map(id => {
-            const items = ordersDB[id];
-            const nSum = items.reduce((s, i) => s + i.nestingQty, 0);
-            const sSum = items.reduce((s, i) => s + i.sawQty, 0);
-            return `
-                <div class="order-item" onclick="openOrder('${escapeHtml(id)}')">
-                    <button class="order-del-top" onclick="deleteOrder(event, '${escapeHtml(id)}')">刪除</button>
-                    <h3>${escapeHtml(id)}</h3>
-                    <div class="order-meta">色號：<strong>${items.length}</strong> 種<br>Nesting：<strong>${nSum}</strong> 片 ｜ 電子鋸：<strong>${sSum}</strong> 片</div>
-                </div>`;
-        }).join('') : `<div style="color:#6b7280;grid-column:1/-1;text-align:center;padding:20px;">尚無訂單</div>`;
-    }
-
-    function renderDetailTable() {
-        const tbody = document.getElementById('detailTableBody');
-        const items = ordersDB[currentOrder] || [];
-        if (!items.length) { 
-            tbody.innerHTML = `<tr><td colspan="5" style="color:#9ca3af;padding:30px;">尚無色號資料</td></tr>`; 
-            return; 
-        }
-
-        let nTotal = 0, sTotal = 0;
-        const rows = items.map((i, idx) => {
-            nTotal += i.nestingQty; 
-            sTotal += i.sawQty;
-            const lbl = `<span class="merged-text">${escapeHtml(i.colorCode)}</span><span class="spec-sub merged-sub">${escapeHtml(i.woodName)}</span>`;
-            return `<tr>
-                <td class="cell-n">${i.nestingQty > 0 ? lbl : ''}</td>
-                <td class="cell-n divider qty-bold">${i.nestingQty > 0 ? i.nestingQty : ''}</td>
-                <td class="cell-s">${i.sawQty > 0 ? lbl : ''}</td>
-                <td class="cell-s qty-bold">${i.sawQty > 0 ? i.sawQty : ''}</td>
-                <td><button class="btn-del" onclick="deleteColorRow(${idx})">刪除</button></td>
-            </tr>`;
-        }).join('');
-        
-        tbody.innerHTML = rows + `
-            <tr class="sum-row">
-                <td style="text-align:right;">Nesting 合計：</td>
-                <td class="divider" style="color:#1e40af;font-size:17px;">${nTotal} 片</td>
-                <td style="text-align:right;">電子鋸 合計：</td>
-                <td style="color:#b45309;font-size:17px;">${sTotal} 片</td>
-                <td></td>
-            </tr>`;
-    }
-
-    function exportSingleCSV() {
-        const items = ordersDB[currentOrder] || [];
-        if (!items.length) return alert('無資料可匯出');
-        let csv = `\uFEFF訂單號,Nesting(色號/木名),Nesting數量,電子鋸(色號/木名),電子鋸數量\n`;
-        items.forEach(i => {
-            const nStr = i.nestingQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
-            const sStr = i.sawQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
-            csv += `"${currentOrder}","${nStr}",${i.nestingQty || ''},"${sStr}",${i.sawQty || ''}\n`;
-        });
-        downloadCSV(csv, `訂單_${currentOrder}.csv`);
-    }
-
-    function exportAllCSV() {
-        const keys = Object.keys(ordersDB);
-        if (!keys.length) return alert('無資料可匯出');
-        let csv = `\uFEFF訂單號,Nesting(色號/木名),Nesting數量,電子鋸(色號/木名),電子鋸數量\n`;
-        keys.forEach(id => {
-            ordersDB[id].forEach(i => {
-                const nStr = i.nestingQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
-                const sStr = i.sawQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
-                csv += `"${id}","${nStr}",${i.nestingQty || ''},"${sStr}",${i.sawQty || ''}\n`;
-            });
-        });
-        downloadCSV(csv, `全部訂單分板總表.csv`);
-    }
-
-    function downloadCSV(csv, name) {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-        a.download = name; 
-        a.click();
-    }
-</script>
-</body>
-</html>
+        const code
