@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>系統櫃訂單分板系統 (相機掃描修復版)</title>
+    <title>系統櫃訂單分板系統 (含案名與出貨日)</title>
     <!-- 引入 html5-qrcode 掃描庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <style>
@@ -26,10 +26,10 @@
         .btn-export { background: #059669; color: #fff; }
         .btn-scan { background: #7c3aed; color: #fff; font-size: 15px; }
         .btn-del { background: #ef4444; color: #fff; padding: 5px 10px; font-size: 13px; }
-        .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; }
+        .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
         .order-item { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; cursor: pointer; position: relative; }
         .order-item:hover { border-color: #2563eb; background: #eff6ff; }
-        .order-item h3 { margin: 0 0 8px 0; font-size: 18px; color: #1e3a8a; }
+        .order-item h3 { margin: 0 0 4px 0; font-size: 18px; color: #1e3a8a; }
         .order-meta { font-size: 13px; color: #475569; line-height: 1.6; }
         .order-del-top { position: absolute; top: 12px; right: 12px; background: #fee2e2; color: #dc2626; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-weight: bold; }
         table.align-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -66,8 +66,10 @@
             <div class="card">
                 <div class="header-bar"><h2>步驟 1：建立或選擇訂單號</h2><button onclick="exportAllCSV()" class="btn btn-export">匯出全部訂單 Excel</button></div>
                 <form id="createOrderForm" class="row">
-                    <div class="field" style="max-width: 240px;"><label>新訂單號 *</label><input type="text" id="newOrderId" placeholder="輸入訂單號或掃描" required autocomplete="off"></div>
-                    <button type="submit" class="btn btn-primary">建立並進入訂單</button>
+                    <div class="field" style="max-width: 200px;"><label>新訂單號 *</label><input type="text" id="newOrderId" placeholder="例: ORD-001" required autocomplete="off"></div>
+                    <div class="field" style="max-width: 220px;"><label>案名</label><input type="text" id="newProjectName" placeholder="例: 台北王先生案" autocomplete="off"></div>
+                    <div class="field" style="max-width: 160px;"><label>出貨日期</label><input type="date" id="newShipDate"></div>
+                    <button type="submit" class="btn btn-primary">建立訂單</button>
                     <button type="button" onclick="openScanner()" class="btn btn-scan">📷 掃描 QR 開單</button>
                 </form>
             </div>
@@ -80,14 +82,17 @@
         <div id="viewDetail" style="display: none;">
             <div class="card">
                 <div class="header-bar">
-                    <div><button onclick="goBack()" class="btn btn-back">返回訂單列表</button><span id="currentOrderTitle" style="font-size: 20px; font-weight: bold; margin-left: 12px; color: #1e3a8a;"></span></div>
+                    <div>
+                        <button onclick="goBack()" class="btn btn-back">返回列表</button>
+                        <span id="currentOrderTitle" style="font-size: 18px; font-weight: bold; margin-left: 12px; color: #1e3a8a;"></span>
+                    </div>
                     <button onclick="exportSingleCSV()" class="btn btn-export">匯出此單 Excel</button>
                 </div>
                 <form id="addColorForm" class="row">
                     <div class="field"><label>板材色號 *</label><input type="text" id="colorCode" list="colorHistoryList" placeholder="輸入或選擇色號" autocomplete="off" required><datalist id="colorHistoryList"></datalist></div>
                     <div class="field"><label>木名 *</label><input type="text" id="woodName" placeholder="自動帶出或手動輸入" required autocomplete="off"></div>
-                    <div class="field" style="max-width: 145px;"><label style="color:#1e40af;">Nesting 數量</label><input type="number" id="nestingQty" min="0" placeholder="無則留空"></div>
-                    <div class="field" style="max-width: 145px;"><label style="color:#b45309;">電子鋸 數量</label><input type="number" id="sawQty" min="0" placeholder="無則留空"></div>
+                    <div class="field" style="max-width: 140px;"><label style="color:#1e40af;">Nesting 數量</label><input type="number" id="nestingQty" min="0" placeholder="無則留空"></div>
+                    <div class="field" style="max-width: 140px;"><label style="color:#b45309;">電子鋸 數量</label><input type="number" id="sawQty" min="0" placeholder="無則留空"></div>
                     <button type="submit" class="btn btn-primary">加入此色號</button>
                 </form>
             </div>
@@ -141,7 +146,8 @@
 </div>
 
 <script>
-    let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDB')) || {};
+    // 資料結構升級：ordersDB 內包含 { projectName, shipDate, items: [] }
+    let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDBV2')) || {};
     let colorCatalog = JSON.parse(localStorage.getItem('colorCatalogDB')) || {};
     let currentOrder = null;
     let html5QrCode = null;
@@ -163,11 +169,9 @@
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
 
-    // --- 相機掃描 QR 核心邏輯 (安全防呆版) ---
+    // --- 相機掃描 QR 核心邏輯 ---
     function openScanner() {
         document.getElementById('scannerModal').style.display = 'flex';
-        
-        // 延遲初始化確保 Modal 已經顯示且 DOM 節點已建立
         setTimeout(() => {
             if (!html5QrCode) {
                 html5QrCode = new Html5Qrcode("qr-reader");
@@ -179,18 +183,12 @@
                     const orderId = decodedText.trim();
                     if (orderId) {
                         closeScanner();
-                        if (!ordersDB[orderId]) {
-                            ordersDB[orderId] = [];
-                            saveOrders();
-                        }
-                        openOrder(orderId);
+                        handleScannedOrder(orderId);
                     }
                 },
-                (errorMessage) => {
-                    // 掃描中未對準時持續背景執行，不需動作
-                }
+                (errorMessage) => {}
             ).catch(err => {
-                alert('無法啟動相機，請確認瀏覽器是否授權相機權限或使用 HTTPS 連線！');
+                alert('無法啟動相機，請確認是否授權相機權限！');
                 closeScanner();
             });
         }, 200);
@@ -207,7 +205,24 @@
             document.getElementById('scannerModal').style.display = 'none';
         }
     }
-    // ----------------------------------------
+
+    // 掃描到訂單號後的處理
+    function handleScannedOrder(orderId) {
+        if (!ordersDB[orderId]) {
+            // 如果是新訂單，跳出提示讓使用者順便輸入案名與出貨日
+            const projectName = prompt(`掃描到新訂單號：${orderId}\n請輸入【案名】：`, "") || "";
+            const shipDate = prompt(`請輸入【出貨日期】(例: 2026-06-30)：`, "") || "";
+            
+            ordersDB[orderId] = {
+                projectName: projectName.trim(),
+                shipDate: shipDate.trim(),
+                items: []
+            };
+            saveOrders();
+        }
+        openOrder(orderId);
+    }
+    // ----------------------------
 
     document.getElementById('catalogForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -309,20 +324,31 @@
     document.getElementById('createOrderForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const id = document.getElementById('newOrderId').value.trim();
+        const projectName = document.getElementById('newProjectName').value.trim();
+        const shipDate = document.getElementById('newShipDate').value;
         if (!id) return;
+
         if (!ordersDB[id]) { 
-            ordersDB[id] = []; 
-            saveOrders(); 
+            ordersDB[id] = { projectName, shipDate, items: [] }; 
+        } else {
+            // 如果已存在則更新案名與日期
+            ordersDB[id].projectName = projectName;
+            ordersDB[id].shipDate = shipDate;
         }
+        saveOrders();
+        
         document.getElementById('newOrderId').value = '';
+        document.getElementById('newProjectName').value = '';
+        document.getElementById('newShipDate').value = '';
         openOrder(id);
     });
 
     function openOrder(orderId) {
         currentOrder = orderId;
+        const orderData = ordersDB[orderId];
         document.getElementById('viewOrders').style.display = 'none';
         document.getElementById('viewDetail').style.display = 'block';
-        document.getElementById('currentOrderTitle').textContent = `訂單號：${orderId}`;
+        document.getElementById('currentOrderTitle').textContent = `訂單號：${orderId} ｜ 案名：${orderData.projectName || '無'} ｜ 出貨日：${orderData.shipDate || '未定'}`;
         renderDetailTable(); 
         colorInput.focus();
     }
@@ -348,18 +374,16 @@
             saveCatalog(); 
         }
         
-        let list = ordersDB[currentOrder];
-        if (!list) {
-            list = [];
-            ordersDB[currentOrder] = list;
-        }
-        const existing = list.find(i => i.colorCode === colorCode);
+        let orderObj = ordersDB[currentOrder];
+        if (!orderObj.items) orderObj.items = [];
+
+        const existing = orderObj.items.find(i => i.colorCode === colorCode);
         if (existing) { 
             existing.woodName = woodName; 
             existing.nestingQty += nQty; 
             existing.sawQty += sQty; 
         } else { 
-            list.push({ colorCode, woodName, nestingQty: nQty, sawQty: sQty }); 
+            orderObj.items.push({ colorCode, woodName, nestingQty: nQty, sawQty: sQty }); 
         }
 
         saveOrders(); 
@@ -373,7 +397,7 @@
     });
 
     function deleteColorRow(idx) { 
-        ordersDB[currentOrder].splice(idx, 1); 
+        ordersDB[currentOrder].items.splice(idx, 1); 
         saveOrders(); 
         renderDetailTable(); 
     }
@@ -388,30 +412,36 @@
     }
     
     function saveOrders() { 
-        localStorage.setItem('ordersMasterDB', JSON.stringify(ordersDB)); 
+        localStorage.setItem('ordersMasterDBV2', JSON.stringify(ordersDB)); 
     }
 
     function renderOrderList() {
         const grid = document.getElementById('orderListGrid');
         const keys = Object.keys(ordersDB).reverse();
         grid.innerHTML = keys.length ? keys.map(id => {
-            const items = ordersDB[id];
+            const orderObj = ordersDB[id];
+            const items = orderObj.items || [];
             const nSum = items.reduce((s, i) => s + i.nestingQty, 0);
             const sSum = items.reduce((s, i) => s + i.sawQty, 0);
             return `
                 <div class="order-item" onclick="openOrder('${escapeHtml(id)}')">
                     <button class="order-del-top" onclick="deleteOrder(event, '${escapeHtml(id)}')">刪除</button>
                     <h3>${escapeHtml(id)}</h3>
-                    <div class="order-meta">色號：<strong>${items.length}</strong> 種<br>Nesting：<strong>${nSum}</strong> 片 ｜ 電子鋸：<strong>${sSum}</strong> 片</div>
+                    <div class="order-meta">
+                        案名：<strong>${escapeHtml(orderObj.projectName || '未填寫')}</strong><br>
+                        出貨日：<strong>${escapeHtml(orderObj.shipDate || '未定')}</strong><br>
+                        Nesting：<strong>${nSum}</strong> 片 ｜ 電子鋸：<strong>${sSum}</strong> 片
+                    </div>
                 </div>`;
         }).join('') : `<div style="color:#6b7280;grid-column:1/-1;text-align:center;padding:20px;">尚無訂單</div>`;
     }
 
     function renderDetailTable() {
         const tbody = document.getElementById('detailTableBody');
-        const items = ordersDB[currentOrder] || [];
+        const orderObj = ordersDB[currentOrder] || { items: [] };
+        const items = orderObj.items || [];
         if (!items.length) { 
-            tbody.innerHTML = `<tr><td colspan="5" style="color:#9ca3af;padding:30px;">無色號資料</td></tr>`; 
+            tbody.innerHTML = `<tr><td colspan="5" style="color:#9ca3af;padding:30px;">尚無色號資料</td></tr>`; 
             return; 
         }
 
@@ -440,14 +470,14 @@
     }
 
     function exportSingleCSV() {
-        const items = ordersDB[currentOrder] || [];
+        const orderObj = ordersDB[currentOrder] || { items: [] };
+        const items = orderObj.items || [];
         if (!items.length) return alert('無資料可匯出');
-        let csv = `\uFEFF訂單號,Nesting(色號/木名),Nesting數量,電子鋸(色號/木名),電子鋸數量\n`;
-        items.items?.forEach?.(i => {}); // safety
+        let csv = `\uFEFF訂單號,案名,出貨日期,Nesting(色號/木名),Nesting數量,電子鋸(色號/木名),電子鋸數量\n`;
         items.forEach(i => {
             const nStr = i.nestingQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
             const sStr = i.sawQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
-            csv += `"${currentOrder}","${nStr}",${i.nestingQty || ''},"${sStr}",${i.sawQty || ''}\n`;
+            csv += `"${currentOrder}","${orderObj.projectName || ''}","${orderObj.shipDate || ''}","${nStr}",${i.nestingQty || ''},"${sStr}",${i.sawQty || ''}\n`;
         });
         downloadCSV(csv, `訂單_${currentOrder}.csv`);
     }
@@ -455,12 +485,13 @@
     function exportAllCSV() {
         const keys = Object.keys(ordersDB);
         if (!keys.length) return alert('無資料可匯出');
-        let csv = `\uFEFF訂單號,Nesting(色號/木名),Nesting數量,電子鋸(色號/木名),電子鋸數量\n`;
+        let csv = `\uFEFF訂單號,案名,出貨日期,Nesting(色號/木名),Nesting數量,電子鋸(色號/木名),電子鋸數量\n`;
         keys.forEach(id => {
-            ordersDB[id].forEach(i => {
+            const orderObj = ordersDB[id];
+            (orderObj.items || []).forEach(i => {
                 const nStr = i.nestingQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
                 const sStr = i.sawQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
-                csv += `"${id}","${nStr}",${i.nestingQty || ''},"${sStr}",${i.sawQty || ''}\n`;
+                csv += `"${id}","${orderObj.projectName || ''}","${orderObj.shipDate || ''}","${nStr}",${i.nestingQty || ''},"${sStr}",${i.sawQty || ''}\n`;
             });
         });
         downloadCSV(csv, `全部訂單分板總表.csv`);
