@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系統櫃訂單分板系統 (RWD 雙模式 + 穩定色號清單)</title>
+    <title>系統櫃訂單分板系統 (關鍵字下拉清單)</title>
     <!-- 引入 html5-qrcode 掃描庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <style>
@@ -17,7 +17,7 @@
         .header-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f3f4f6; padding-bottom: 12px; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
         .header-bar h2 { margin: 0; font-size: 19px; }
         .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; width: 100%; }
-        .field { display: flex; flex-direction: column; flex: 1; min-width: 130px; }
+        .field { display: flex; flex-direction: column; flex: 1; min-width: 130px; position: relative; }
         label { font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #4b5563; }
         input, textarea { padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 15px; width: 100%; }
         input:focus, textarea:focus { outline: none; border-color: #2563eb; }
@@ -33,6 +33,35 @@
         .order-item h3 { margin: 0 0 4px 0; font-size: 18px; color: #1e3a8a; }
         .order-meta { font-size: 13px; color: #475569; line-height: 1.6; }
         .order-del-top { position: absolute; top: 12px; right: 12px; background: #fee2e2; color: #dc2626; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-weight: bold; }
+
+        /* --- 自動完成浮動選單樣式 --- */
+        .autocomplete-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 99;
+            margin-top: 2px;
+        }
+        .autocomplete-item {
+            padding: 10px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+        }
+        .autocomplete-item:hover {
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
 
         /* --- 桌面版大表格 --- */
         .desktop-view { display: block; }
@@ -60,11 +89,6 @@
         table.catalog-table { width: 100%; border-collapse: collapse; }
         .catalog-table th, .catalog-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 15px; }
         .catalog-table th { background: #f8fafc; color: #334155; }
-
-        /* 色號快速選取按鈕列 (專為手機橫向/直向設計，確保點了絕對看得到選單) */
-        .quick-color-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; max-height: 80px; overflow-y: auto; }
-        .quick-color-chip { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; font-weight: bold; }
-        .quick-color-chip:hover { background: #bae6fd; }
 
         @media (max-width: 768px) {
             .desktop-view { display: none !important; }
@@ -115,10 +139,9 @@
                 <form id="addColorForm" class="row">
                     <div class="field">
                         <label>板材色號 *</label>
-                        <input type="text" id="colorCode" list="colorHistoryList" placeholder="輸入或點下方色號" autocomplete="off" required>
-                        <datalist id="colorHistoryList"></datalist>
-                        <!-- 快速點擊色號列（解決手機橫向 datalist 打不開的問題） -->
-                        <div id="quickColorBar" class="quick-color-bar" title="常用色號快捷點擊"></div>
+                        <input type="text" id="colorCode" placeholder="輸入色號或木名關鍵字..." autocomplete="off" required>
+                        <!-- 懸浮智慧建議清單 -->
+                        <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
                     </div>
                     <div class="field"><label>木名 *</label><input type="text" id="woodName" placeholder="自動帶出" required autocomplete="off"></div>
                     <div class="field" style="max-width: 110px;"><label style="color:#1e40af;">Nesting 數</label><input type="number" id="nestingQty" min="0" placeholder="留空"></div>
@@ -189,7 +212,6 @@
     let html5QrCode = null;
 
     renderOrderList();
-    updateColorDatalist();
 
     function switchPage(page) {
         document.getElementById('pageOrders').style.display = page === 'orders' ? 'block' : 'none';
@@ -288,29 +310,58 @@
     
     function saveCatalog() { 
         localStorage.setItem('colorCatalogDB', JSON.stringify(colorCatalog)); 
-        updateColorDatalist(); 
-    }
-    
-    // 同步更新 Datalist 與 手機橫向快捷色號點擊列
-    function updateColorDatalist() { 
-        const entries = Object.entries(colorCatalog);
-        document.getElementById('colorHistoryList').innerHTML = entries.map(([c, n]) => `<option value="${escapeHtml(c)}">${escapeHtml(n)}</option>`).join('');
-        
-        // 產生手機橫向快捷色號按鈕（解決手機橫向時 datalist 打不開的痛點）
-        const bar = document.getElementById('quickColorBar');
-        if (bar) {
-            bar.innerHTML = entries.length ? entries.map(([c, n]) => `
-                <button type="button" class="quick-color-chip" onclick="selectQuickColor('${escapeHtml(c)}', '${escapeHtml(n)}')">${escapeHtml(c)}</button>
-            `).join('') : '<span style="font-size:11px;color:#9ca3af;">尚無色號，請先至對照表新增</span>';
-        }
     }
 
-    // 快捷點擊色號帶入
-    function selectQuickColor(code, name) {
-        document.getElementById('colorCode').value = code;
-        document.getElementById('woodName').value = name;
+    // --- 輸入關鍵字即時浮動建議選單邏輯 ---
+    const colorInput = document.getElementById('colorCode');
+    const woodInput = document.getElementById('woodName');
+    const dropdown = document.getElementById('autocompleteDropdown');
+
+    colorInput.addEventListener('input', function() {
+        const keyword = this.value.trim().toLowerCase();
+        const matchedKey = Object.keys(colorCatalog).find(k => k.toLowerCase() === keyword);
+        if (matchedKey) {
+            woodInput.value = colorCatalog[matchedKey];
+        }
+
+        if (!keyword) {
+            dropdown.style.display = 'none';
+            return;
+        }
+
+        // 過濾符合關鍵字（色號或木名包含該字串）的項目
+        const filtered = Object.entries(colorCatalog).filter(([c, n]) => 
+            c.toLowerCase().includes(keyword) || n.toLowerCase().includes(keyword)
+        );
+
+        if (filtered.length > 0) {
+            dropdown.innerHTML = filtered.map(([c, n]) => `
+                <div class="autocomplete-item" onclick="selectDropdownItem('${escapeHtml(c)}', '${escapeHtml(n)}')">
+                    <strong>${escapeHtml(c)}</strong>
+                    <span style="color:#64748b;">${escapeHtml(n)}</span>
+                </div>
+            `).join('');
+            dropdown.style.display = 'block';
+        } else {
+            dropdown.style.display = 'none';
+        }
+    });
+
+    // 點擊建議項目
+    function selectDropdownItem(code, name) {
+        colorInput.value = code;
+        woodInput.value = name;
+        dropdown.style.display = 'none';
         document.getElementById('nestingQty').focus();
     }
+
+    // 點擊畫面其他地方自動關閉下拉選單
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.field')) {
+            dropdown.style.display = 'none';
+        }
+    });
+    // ------------------------------------
 
     function renderCatalogTable() {
         const kw = document.getElementById('searchCatalog').value.trim().toLowerCase();
@@ -322,14 +373,6 @@
             <button class="btn-del" onclick="deleteCatalogItem('${escapeHtml(code)}')">刪除</button></td></tr>
         `).join('') : `<tr><td colspan="3" style="text-align:center;color:#9ca3af;padding:20px;">無符合資料</td></tr>`;
     }
-
-    const colorInput = document.getElementById('colorCode');
-    const woodInput = document.getElementById('woodName');
-    colorInput.addEventListener('input', function() {
-        const code = this.value.trim();
-        const matchedKey = Object.keys(colorCatalog).find(k => k.toLowerCase() === code.toLowerCase());
-        if (matchedKey) woodInput.value = colorCatalog[matchedKey];
-    });
 
     document.getElementById('createOrderForm').addEventListener('submit', function(e) {
         e.preventDefault();
