@@ -3,33 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系統櫃訂單分板系統 (介面平均優化版)</title>
-    <!-- 引入 html5-qrcode 掃描庫 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <title>系統櫃訂單分板系統 (極致穩定版)</title>
     <style>
         * { box-sizing: border-box; font-family: "Microsoft JhengHei", sans-serif; }
         html, body { overflow-x: hidden; max-width: 100vw; margin: 0; padding: 0; background: #eef2f6; color: #1f2937; }
         .container { max-width: 1100px; margin: 0 auto; padding: 20px; width: 100%; }
         
-        /* 分頁標籤列平均分配 */
         .nav-tabs { display: flex; gap: 12px; margin-bottom: 20px; }
-        .tab-btn { flex: 1; padding: 14px 20px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; background: #cbd5e1; color: #334155; text-align: center; transition: all 0.2s; }
+        .tab-btn { flex: 1; padding: 14px 20px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; background: #cbd5e1; color: #334155; text-align: center; }
         .tab-btn.active { background: #1e3a8a; color: #fff; box-shadow: 0 4px 12px rgba(30,58,138,0.25); }
         
         .card { background: #fff; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 20px; width: 100%; }
         .header-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
         .header-bar h2 { margin: 0; font-size: 19px; color: #0f172a; }
         
-        /* 表單列平均鋪排 */
         .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; width: 100%; }
         .field { display: flex; flex-direction: column; flex: 1; min-width: 160px; position: relative; }
         label { font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #475569; }
-        input, textarea { padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; width: 100%; background: #fff; transition: border-color 0.2s; }
+        input, textarea { padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; width: 100%; background: #fff; }
         input:focus, textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
         
-        /* 按鈕統一高度與視覺 */
-        .btn { padding: 11px 20px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: opacity 0.2s; }
-        .btn:hover { opacity: 0.9; }
+        .btn { padding: 11px 20px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
         .btn-primary { background: #2563eb; color: #fff; }
         .btn-back { background: #475569; color: #fff; }
         .btn-export { background: #059669; color: #fff; }
@@ -37,18 +31,16 @@
         .btn-del { background: #ef4444; color: #fff; padding: 6px 12px; font-size: 13px; height: 32px; border-radius: 6px; }
         
         .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; width: 100%; }
-        .order-item { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px; cursor: pointer; position: relative; transition: all 0.2s; }
-        .order-item:hover { border-color: #2563eb; background: #eff6ff; box-shadow: 0 4px 12px rgba(37,99,235,0.08); }
+        .order-item { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px; cursor: pointer; position: relative; }
+        .order-item:hover { border-color: #2563eb; background: #eff6ff; }
         .order-item h3 { margin: 0 0 6px 0; font-size: 18px; color: #1e3a8a; }
         .order-meta { font-size: 13px; color: #475569; line-height: 1.6; }
         .order-del-top { position: absolute; top: 14px; right: 14px; background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-weight: bold; font-size: 12px; }
 
-        /* 智慧建議浮動清單 */
         .autocomplete-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,0.12); max-height: 220px; overflow-y: auto; z-index: 99; margin-top: 4px; }
         .autocomplete-item { padding: 11px 14px; font-size: 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; }
         .autocomplete-item:hover { background: #eff6ff; color: #1d4ed8; }
 
-        /* 桌面版大表格 */
         .desktop-view { display: block; }
         table.align-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .align-table th, .align-table td { padding: 14px 12px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 15px; }
@@ -64,7 +56,6 @@
         .qty-bold { font-weight: bold; font-size: 18px; color: #0f172a; }
         .sum-row td { background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; font-size: 15px; }
 
-        /* 手機版卡片流 */
         .mobile-view { display: none; }
         .mobile-card-item { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; margin-bottom: 14px; position: relative; }
         .mobile-card-header { font-size: 16px; font-weight: bold; color: #1e3a8a; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
@@ -75,18 +66,13 @@
         .catalog-table th, .catalog-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 15px; }
         .catalog-table th { background: #f8fafc; color: #334155; }
 
-        /* RWD 響應式調整 */
         @media (max-width: 768px) {
             .desktop-view { display: none !important; }
             .mobile-view { display: block !important; }
             .container { padding: 12px; }
             .card { padding: 16px; }
-            .row button { width: 100%; } /* 手機上按鈕自動撐滿，平均好按 */
+            .row button { width: 100%; }
         }
-
-        /* 掃描彈窗 */
-        #scannerModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; flex-direction: column; }
-        #scannerBox { background: #fff; padding: 24px; border-radius: 14px; width: 90%; max-width: 400px; text-align: center; }
     </style>
 </head>
 <body>
@@ -101,11 +87,10 @@
             <div class="card">
                 <div class="header-bar"><h2>步驟 1：建立或選擇訂單</h2><button onclick="exportAllCSV()" class="btn btn-export">匯出全部總表</button></div>
                 <form id="createOrderForm" class="row">
-                    <div class="field"><label>新訂單號 *</label><input type="text" id="newOrderId" placeholder="例: ORD-001" required autocomplete="off"></div>
+                    <div class="field"><label>新訂單號 *</label><input type="text" id="newOrderId" placeholder="輸入訂單號或用條碼槍刷入" required autocomplete="off"></div>
                     <div class="field"><label>案名</label><input type="text" id="newProjectName" placeholder="例: 王先生案" autocomplete="off"></div>
                     <div class="field" style="max-width: 160px;"><label>出貨日期</label><input type="date" id="newShipDate"></div>
                     <button type="submit" class="btn btn-primary">建立訂單</button>
-                    <button type="button" onclick="openScanner()" class="btn btn-scan">📷 掃描 QR 開單</button>
                 </form>
             </div>
             <div class="card">
@@ -182,20 +167,10 @@
     </div>
 </div>
 
-<!-- 掃描彈窗 -->
-<div id="scannerModal">
-    <div id="scannerBox">
-        <h3 style="margin-top:0; color:#1e3a8a;">對準訂單 QR Code</h3>
-        <div id="qr-reader" style="width:100%;"></div>
-        <button type="button" onclick="closeScanner()" class="btn btn-back" style="margin-top:15px; width:100%;">關閉相機</button>
-    </div>
-</div>
-
 <script>
-    let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDBV2')) || {};
+    let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDBV3')) || {};
     let colorCatalog = JSON.parse(localStorage.getItem('colorCatalogDB')) || {};
     let currentOrder = null;
-    let html5QrCode = null;
 
     renderOrderList();
 
@@ -212,54 +187,6 @@
         if (!str) return '';
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
-
-    // --- 相機掃描 QR 核心邏輯 ---
-    function openScanner() {
-        document.getElementById('scannerModal').style.display = 'flex';
-        setTimeout(() => {
-            if (!html5QrCode) {
-                html5QrCode = new Html5Qrcode("qr-reader");
-            }
-            html5QrCode.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                (decodedText) => {
-                    const orderId = decodedText.trim();
-                    if (orderId) {
-                        closeScanner();
-                        handleScannedOrder(orderId);
-                    }
-                },
-                (errorMessage) => {}
-            ).catch(err => {
-                alert('無法啟動相機，請確認相機權限！');
-                closeScanner();
-            });
-        }, 200);
-    }
-
-    function closeScanner() {
-        if (html5QrCode && html5QrCode.isScanning) {
-            html5QrCode.stop().then(() => {
-                document.getElementById('scannerModal').style.display = 'none';
-            }).catch(() => {
-                document.getElementById('scannerModal').style.display = 'none';
-            });
-        } else {
-            document.getElementById('scannerModal').style.display = 'none';
-        }
-    }
-
-    function handleScannedOrder(orderId) {
-        if (!ordersDB[orderId]) {
-            const projectName = prompt(`掃描到新訂單：${orderId}\n請輸入【案名】：`, "") || "";
-            const shipDate = prompt(`請輸入【出貨日期】(例: 2026-06-30)：`, "") || "";
-            ordersDB[orderId] = { projectName: projectName.trim(), shipDate: shipDate.trim(), items: [] };
-            saveOrders();
-        }
-        openOrder(orderId);
-    }
-    // ----------------------------
 
     document.getElementById('catalogForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -298,7 +225,6 @@
         localStorage.setItem('colorCatalogDB', JSON.stringify(colorCatalog)); 
     }
 
-    // --- 輸入關鍵字即時浮動建議選單邏輯 ---
     const colorInput = document.getElementById('colorCode');
     const woodInput = document.getElementById('woodName');
     const dropdown = document.getElementById('autocompleteDropdown');
@@ -344,7 +270,6 @@
             dropdown.style.display = 'none';
         }
     });
-    // ------------------------------------
 
     function renderCatalogTable() {
         const kw = document.getElementById('searchCatalog').value.trim().toLowerCase();
@@ -398,4 +323,126 @@
         let orderObj = ordersDB[currentOrder];
         if (!orderObj.items) orderObj.items = [];
 
-        const existing = orderObj.items.find(
+        const existing = orderObj.items.find(i => i.colorCode === colorCode);
+        if (existing) { existing.woodName = woodName; existing.nestingQty += nQty; existing.sawQty += sQty; }
+        else { orderObj.items.push({ colorCode, woodName, nestingQty: nQty, sawQty: sQty }); }
+
+        saveOrders(); 
+        renderDetailViews();
+        colorInput.value = ''; woodInput.value = '';
+        document.getElementById('nestingQty').value = ''; document.getElementById('sawQty').value = '';
+        colorInput.focus();
+    });
+
+    function deleteColorRow(idx) { ordersDB[currentOrder].items.splice(idx, 1); saveOrders(); renderDetailViews(); }
+    function deleteOrder(e, id) { e.stopPropagation(); if (confirm(`刪除訂單「${id}」？`)) { delete ordersDB[id]; saveOrders(); renderOrderList(); } }
+    function saveOrders() { localStorage.setItem('ordersMasterDBV3', JSON.stringify(ordersDB)); }
+
+    function renderOrderList() {
+        const grid = document.getElementById('orderListGrid');
+        const keys = Object.keys(ordersDB).reverse();
+        grid.innerHTML = keys.length ? keys.map(id => {
+            const orderObj = ordersDB[id];
+            const items = orderObj.items || [];
+            const nSum = items.reduce((s, i) => s + i.nestingQty, 0);
+            const sSum = items.reduce((s, i) => s + i.sawQty, 0);
+            return `
+                <div class="order-item" onclick="openOrder('${escapeHtml(id)}')">
+                    <button class="order-del-top" onclick="deleteOrder(event, '${escapeHtml(id)}')">刪除</button>
+                    <h3>${escapeHtml(id)}</h3>
+                    <div class="order-meta">
+                        案名：<strong>${escapeHtml(orderObj.projectName || '未填寫')}</strong><br>
+                        出貨日：<strong>${escapeHtml(orderObj.shipDate || '未定')}</strong><br>
+                        Nesting：<strong>${nSum}</strong> 片 ｜ 電子鋸：<strong>${sSum}</strong> 片
+                    </div>
+                </div>`;
+        }).join('') : `<div style="color:#6b7280;grid-column:1/-1;text-align:center;padding:20px;">尚無訂單</div>`;
+    }
+
+    function renderDetailViews() {
+        const orderObj = ordersDB[currentOrder] || { items: [] };
+        const items = orderObj.items || [];
+        
+        const desktopBody = document.getElementById('detailTableBody');
+        const mobileContainer = document.getElementById('mobileCardContainer');
+
+        if (!items.length) {
+            desktopBody.innerHTML = `<tr><td colspan="5" style="color:#9ca3af;padding:30px;">尚無色號資料</td></tr>`;
+            mobileContainer.innerHTML = `<div style="text-align:center;color:#9ca3af;padding:30px;background:#fff;border-radius:8px;">尚無色號資料</div>`;
+            return;
+        }
+
+        let nTotal = 0, sTotal = 0;
+
+        desktopBody.innerHTML = items.map((i, idx) => {
+            nTotal += i.nestingQty; sTotal += i.sawQty;
+            const lbl = `<span class="merged-text">${escapeHtml(i.colorCode)}</span><span class="merged-sub">${escapeHtml(i.woodName)}</span>`;
+            return `<tr>
+                <td class="cell-n">${i.nestingQty > 0 ? lbl : ''}</td>
+                <td class="cell-n divider qty-bold">${i.nestingQty > 0 ? i.nestingQty : ''}</td>
+                <td class="cell-s">${i.sawQty > 0 ? lbl : ''}</td>
+                <td class="cell-s qty-bold">${i.sawQty > 0 ? i.sawQty : ''}</td>
+                <td><button class="btn-del" onclick="deleteColorRow(${idx})">刪除</button></td>
+            </tr>`;
+        }).join('') + `<tr class="sum-row"><td style="text-align:right;">Nesting 合計：</td><td class="divider" style="color:#1e40af;font-size:17px;">${nTotal} 片</td><td style="text-align:right;">電子鋸 合計：</td><td style="color:#b45309;font-size:17px;">${sTotal} 片</td><td></td></tr>`;
+
+        mobileContainer.innerHTML = items.map((i, idx) => {
+            return `
+                <div class="mobile-card-item">
+                    <div class="mobile-card-header">
+                        <span>${escapeHtml(i.colorCode)} <small style="color:#475569;font-weight:normal;">(${escapeHtml(i.woodName)})</small></span>
+                        <button class="btn-del" onclick="deleteColorRow(${idx})">刪除</button>
+                    </div>
+                    <div class="mobile-sub-section" style="background:#eff6ff;">
+                        <span style="color:#1e40af;font-weight:bold;">Nesting 加工</span>
+                        <span class="qty-bold" style="color:#1e40af;">${i.nestingQty > 0 ? i.nestingQty + ' 片' : '無'}</span>
+                    </div>
+                    <div class="mobile-sub-section" style="background:#fffbeb;">
+                        <span style="color:#92400e;font-weight:bold;">電子鋸 加工</span>
+                        <span class="qty-bold" style="color:#b45309;">${i.sawQty > 0 ? i.sawQty + ' 片' : '無'}</span>
+                    </div>
+                </div>`;
+        }).join('') + `
+            <div class="mobile-sum-box">
+                <div>Nesting 總計<br><span style="color:#1e40af;font-size:18px;">${nTotal} 片</span></div>
+                <div style="border-left:1px solid #cbd5e1;padding-left:15px;">電子鋸 總計<br><span style="color:#b45309;font-size:18px;">${sTotal} 片</span></div>
+            </div>`;
+    }
+
+    function exportSingleCSV() {
+        const orderObj = ordersDB[currentOrder] || { items: [] };
+        const items = orderObj.items || [];
+        if (!items.length) return alert('無資料可匯出');
+        let csv = `\uFEFF訂單號,案名,出貨日期,Nesting(色號/木名),Nesting數量,電子鋸(色號/木名),電子鋸數量\n`;
+        items.forEach(i => {
+            const nStr = i.nestingQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
+            const sStr = i.sawQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
+            csv += `"${currentOrder}","${orderObj.projectName || ''}","${orderObj.shipDate || ''}","${nStr}",${i.nestingQty || ''},"${sStr}",${i.sawQty || ''}\n`;
+        });
+        downloadCSV(csv, `訂單_${currentOrder}.csv`);
+    }
+
+    function exportAllCSV() {
+        const keys = Object.keys(ordersDB);
+        if (!keys.length) return alert('無資料可匯出');
+        let csv = `\uFEFF訂單號,案名,出貨日期,Nesting(色號/木名),Nesting數量,電子鋸(色號/木名),電子鋸數量\n`;
+        keys.forEach(id => {
+            const orderObj = ordersDB[id];
+            (orderObj.items || []).forEach(i => {
+                const nStr = i.nestingQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
+                const sStr = i.sawQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
+                csv += `"${id}","${orderObj.projectName || ''}","${orderObj.shipDate || ''}","${nStr}",${i.nestingQty || ''},"${sStr}",${i.sawQty || ''}\n`;
+            });
+        });
+        downloadCSV(csv, `全部訂單分板總表.csv`);
+    }
+
+    function downloadCSV(csv, name) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+        a.download = name; 
+        a.click();
+    }
+</script>
+</body>
+</html>
