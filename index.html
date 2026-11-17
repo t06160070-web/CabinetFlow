@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系統櫃訂單分板系統 (RWD 手機雙模式)</title>
+    <title>系統櫃訂單分板系統 (RWD 雙模式 + 穩定色號清單)</title>
     <!-- 引入 html5-qrcode 掃描庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: "Microsoft JhengHei", sans-serif; }
-        body { background: #eef2f6; padding: 15px; margin: 0; color: #1f2937; }
-        .container { max-width: 1050px; margin: 0 auto; }
+        html, body { overflow-x: hidden; max-width: 100vw; margin: 0; padding: 0; background: #eef2f6; color: #1f2937; }
+        .container { max-width: 1050px; margin: 0 auto; padding: 15px; width: 100%; }
         .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
         .tab-btn { padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; background: #cbd5e1; color: #334155; }
         .tab-btn.active { background: #1e3a8a; color: #fff; }
-        .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        .card { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 20px; width: 100%; }
         .header-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f3f4f6; padding-bottom: 12px; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
         .header-bar h2 { margin: 0; font-size: 19px; }
-        .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+        .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; width: 100%; }
         .field { display: flex; flex-direction: column; flex: 1; min-width: 130px; }
         label { font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #4b5563; }
         input, textarea { padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 15px; width: 100%; }
@@ -27,14 +27,14 @@
         .btn-export { background: #059669; color: #fff; }
         .btn-scan { background: #7c3aed; color: #fff; font-size: 15px; }
         .btn-del { background: #ef4444; color: #fff; padding: 5px 10px; font-size: 13px; }
-        .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; }
+        .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; width: 100%; }
         .order-item { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; cursor: pointer; position: relative; }
         .order-item:hover { border-color: #2563eb; background: #eff6ff; }
         .order-item h3 { margin: 0 0 4px 0; font-size: 18px; color: #1e3a8a; }
         .order-meta { font-size: 13px; color: #475569; line-height: 1.6; }
         .order-del-top { position: absolute; top: 12px; right: 12px; background: #fee2e2; color: #dc2626; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-weight: bold; }
 
-        /* --- 桌面版大表格 (預設顯示) --- */
+        /* --- 桌面版大表格 --- */
         .desktop-view { display: block; }
         table.align-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .align-table th, .align-table td { padding: 12px 10px; text-align: center; border-bottom: 1px solid #e5e7eb; font-size: 15px; }
@@ -50,7 +50,7 @@
         .qty-bold { font-weight: bold; font-size: 18px; color: #0f172a; }
         .sum-row td { background: #f3f4f6; font-weight: bold; border-top: 2px solid #cbd5e1; }
 
-        /* --- 手機版卡片流 (預設隱藏，寬度 <= 768px 時自動顯示) --- */
+        /* --- 手機版卡片流 --- */
         .mobile-view { display: none; }
         .mobile-card-item { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px; margin-bottom: 12px; position: relative; }
         .mobile-card-header { font-size: 16px; font-weight: bold; color: #1e3a8a; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
@@ -61,11 +61,15 @@
         .catalog-table th, .catalog-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 15px; }
         .catalog-table th { background: #f8fafc; color: #334155; }
 
-        /*  RWD 媒體查詢：小於 768px 自動切換手機模式 */
+        /* 色號快速選取按鈕列 (專為手機橫向/直向設計，確保點了絕對看得到選單) */
+        .quick-color-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; max-height: 80px; overflow-y: auto; }
+        .quick-color-chip { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; border-radius: 4px; padding: 4px 8px; font-size: 12px; cursor: pointer; font-weight: bold; }
+        .quick-color-chip:hover { background: #bae6fd; }
+
         @media (max-width: 768px) {
             .desktop-view { display: none !important; }
             .mobile-view { display: block !important; }
-            body { padding: 10px; }
+            .container { padding: 10px; }
             .card { padding: 15px; }
         }
 
@@ -104,21 +108,27 @@
                 <div class="header-bar">
                     <div>
                         <button onclick="goBack()" class="btn btn-back">返回列表</button>
-                        <span id="currentOrderTitle" style="font-size: 16px; font-weight: bold; margin-left: 10px; color: #1e3a8a;"></span>
+                        <span id="currentOrderTitle" style="font-size: 15px; font-weight: bold; margin-left: 10px; color: #1e3a8a;"></span>
                     </div>
                     <button onclick="exportSingleCSV()" class="btn btn-export">匯出此單 Excel</button>
                 </div>
                 <form id="addColorForm" class="row">
-                    <div class="field"><label>板材色號 *</label><input type="text" id="colorCode" list="colorHistoryList" placeholder="輸入或選擇色號" autocomplete="off" required><datalist id="colorHistoryList"></datalist></div>
+                    <div class="field">
+                        <label>板材色號 *</label>
+                        <input type="text" id="colorCode" list="colorHistoryList" placeholder="輸入或點下方色號" autocomplete="off" required>
+                        <datalist id="colorHistoryList"></datalist>
+                        <!-- 快速點擊色號列（解決手機橫向 datalist 打不開的問題） -->
+                        <div id="quickColorBar" class="quick-color-bar" title="常用色號快捷點擊"></div>
+                    </div>
                     <div class="field"><label>木名 *</label><input type="text" id="woodName" placeholder="自動帶出" required autocomplete="off"></div>
-                    <div class="field" style="max-width: 120px;"><label style="color:#1e40af;">Nesting 數</label><input type="number" id="nestingQty" min="0" placeholder="留空"></div>
-                    <div class="field" style="max-width: 120px;"><label style="color:#b45309;">電子鋸 數</label><input type="number" id="sawQty" min="0" placeholder="留空"></div>
-                    <button type="submit" class="btn btn-primary">加入色號</button>
+                    <div class="field" style="max-width: 110px;"><label style="color:#1e40af;">Nesting 數</label><input type="number" id="nestingQty" min="0" placeholder="留空"></div>
+                    <div class="field" style="max-width: 110px;"><label style="color:#b45309;">電子鋸 數</label><input type="number" id="sawQty" min="0" placeholder="留空"></div>
+                    <button type="submit" class="btn btn-primary" style="align-self: flex-end;">加入色號</button>
                 </form>
             </div>
 
             <!-- 🖥️ 電腦版：雙欄大表格 -->
-            <div class="card desktop-view" style="padding: 0; overflow: hidden;">
+            <div class="card desktop-view" style="padding: 0; overflow-x: auto;">
                 <table class="align-table">
                     <thead>
                         <tr><th colspan="2" class="th-nesting">Nesting</th><th colspan="2" class="th-saw">電子鋸</th><th rowspan="2" style="width: 70px; background:#f3f4f6; font-size:13px;">操作</th></tr>
@@ -128,7 +138,7 @@
                 </table>
             </div>
 
-            <!-- 📱 手機版：卡片流模式 (自動在窄螢幕顯示) -->
+            <!-- 📱 手機版：卡片流模式 -->
             <div class="mobile-view">
                 <div id="mobileCardContainer"></div>
             </div>
@@ -146,7 +156,7 @@
         </div>
         <div class="card">
             <div class="header-bar"><h2>📥 批次匯入對照表</h2></div>
-            <p style="font-size:13px; color:#4b5563; margin-top:0;">每行一筆，用 <strong>Tab</strong>、<strong>空格</strong> 或 <strong>逗號</strong> 分隔 (色號 木名)。</p>
+            <p style="font-size:13px; color:#4b5563; margin-top:0;">每行一筆，用 <strong>Tab</strong>、<strong>空格</strong> 或 <strong>逗號</strong> 分隔。</p>
             <textarea id="batchInput" rows="4" style="width:100%;" placeholder="H3303 漢密爾頓橡木&#10;701 雪白"></textarea>
             <div style="margin-top: 10px; display:flex; justify-content:space-between;">
                 <button type="button" onclick="batchImportCatalog()" class="btn btn-export">⚡ 執行批次匯入</button>
@@ -275,8 +285,32 @@
     document.getElementById('searchCatalog').addEventListener('input', renderCatalogTable);
     function editCatalogItem(code) { document.getElementById('catCode').value = code; document.getElementById('catName').value = colorCatalog[code] || ''; document.getElementById('catName').focus(); }
     function deleteCatalogItem(code) { if (confirm(`刪除色號「${code}」？`)) { delete colorCatalog[code]; saveCatalog(); renderCatalogTable(); } }
-    function saveCatalog() { localStorage.setItem('colorCatalogDB', JSON.stringify(colorCatalog)); updateColorDatalist(); }
-    function updateColorDatalist() { document.getElementById('colorHistoryList').innerHTML = Object.entries(colorCatalog).map(([c, n]) => `<option value="${escapeHtml(c)}">${escapeHtml(n)}</option>`).join(''); }
+    
+    function saveCatalog() { 
+        localStorage.setItem('colorCatalogDB', JSON.stringify(colorCatalog)); 
+        updateColorDatalist(); 
+    }
+    
+    // 同步更新 Datalist 與 手機橫向快捷色號點擊列
+    function updateColorDatalist() { 
+        const entries = Object.entries(colorCatalog);
+        document.getElementById('colorHistoryList').innerHTML = entries.map(([c, n]) => `<option value="${escapeHtml(c)}">${escapeHtml(n)}</option>`).join('');
+        
+        // 產生手機橫向快捷色號按鈕（解決手機橫向時 datalist 打不開的痛點）
+        const bar = document.getElementById('quickColorBar');
+        if (bar) {
+            bar.innerHTML = entries.length ? entries.map(([c, n]) => `
+                <button type="button" class="quick-color-chip" onclick="selectQuickColor('${escapeHtml(c)}', '${escapeHtml(n)}')">${escapeHtml(c)}</button>
+            `).join('') : '<span style="font-size:11px;color:#9ca3af;">尚無色號，請先至對照表新增</span>';
+        }
+    }
+
+    // 快捷點擊色號帶入
+    function selectQuickColor(code, name) {
+        document.getElementById('colorCode').value = code;
+        document.getElementById('woodName').value = name;
+        document.getElementById('nestingQty').focus();
+    }
 
     function renderCatalogTable() {
         const kw = document.getElementById('searchCatalog').value.trim().toLowerCase();
@@ -374,7 +408,6 @@
         }).join('') : `<div style="color:#6b7280;grid-column:1/-1;text-align:center;padding:20px;">尚無訂單</div>`;
     }
 
-    // 同時渲染電腦版表格與手機版卡片
     function renderDetailViews() {
         const orderObj = ordersDB[currentOrder] || { items: [] };
         const items = orderObj.items || [];
@@ -390,7 +423,6 @@
 
         let nTotal = 0, sTotal = 0;
 
-        // 1. 渲染電腦版大表格
         desktopBody.innerHTML = items.map((i, idx) => {
             nTotal += i.nestingQty; sTotal += i.sawQty;
             const lbl = `<span class="merged-text">${escapeHtml(i.colorCode)}</span><span class="merged-sub">${escapeHtml(i.woodName)}</span>`;
@@ -403,7 +435,6 @@
             </tr>`;
         }).join('') + `<tr class="sum-row"><td style="text-align:right;">Nesting 合計：</td><td class="divider" style="color:#1e40af;font-size:17px;">${nTotal} 片</td><td style="text-align:right;">電子鋸 合計：</td><td style="color:#b45309;font-size:17px;">${sTotal} 片</td><td></td></tr>`;
 
-        // 2. 渲染手機版直立卡片流
         mobileContainer.innerHTML = items.map((i, idx) => {
             return `
                 <div class="mobile-card-item">
