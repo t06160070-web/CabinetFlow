@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系統櫃訂單分板系統 (彈窗修復版)</title>
+    <title>系統櫃訂單分板系統 (掃描整合進彈窗版)</title>
     <style>
         * { box-sizing: border-box; font-family: "Microsoft JhengHei", sans-serif; }
         html, body { overflow-x: hidden; max-width: 100vw; margin: 0; padding: 0; background: #eef2f6; color: #1f2937; }
@@ -95,12 +95,11 @@
                 <div class="header-bar">
                     <h2>訂單管理</h2>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button onclick="openOrderModal()" class="btn btn-primary">➕ 新增訂單</button>
-                        <button onclick="openScanner()" class="btn btn-scan">📷 掃描 QR 開單</button>
+                        <button onclick="openOrderModal()" class="btn btn-primary">➕ 新建訂單 (含相機掃描)</button>
                         <button onclick="exportAllCSV()" class="btn btn-export">匯出全部總表</button>
                     </div>
                 </div>
-                <p style="color:#64748b; font-size:14px; margin:0;">點擊上方按鈕建立新訂單，或透過相機掃描 QR 碼快速開單。</p>
+                <p style="color:#64748b; font-size:14px; margin:0;">點擊上方按鈕建立新訂單，或在彈窗內直接使用相機掃描 QR 碼代入單號。</p>
             </div>
             <div class="card">
                 <div class="header-bar"><h2>已建立的訂單列表</h2></div>
@@ -168,7 +167,7 @@
     </div>
 </div>
 
-<!-- 📦 彈窗 A：建立訂單 Modal -->
+<!-- 📦 彈窗 A：建立訂單 Modal (內建相機掃描單號) -->
 <div id="orderModal" class="modal-overlay">
     <div class="modal-card">
         <div class="modal-header">
@@ -176,7 +175,13 @@
             <button class="modal-close" onclick="closeOrderModal()">&times;</button>
         </div>
         <form id="orderModalForm" class="modal-body">
-            <div class="field"><label>新訂單號 *</label><input type="text" id="modalOrderId" placeholder="例: ORD-001" required autocomplete="off"></div>
+            <div class="field">
+                <label>新訂單號 *</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="modalOrderId" placeholder="輸入或掃描 QR 碼" required autocomplete="off" style="flex: 1;">
+                    <button type="button" onclick="openScanner()" class="btn btn-scan" style="height: 44px; padding: 0 14px; font-size: 14px;">📷 掃描</button>
+                </div>
+            </div>
             <div class="field"><label>案名</label><input type="text" id="modalProjectName" placeholder="例: 王先生案" autocomplete="off"></div>
             <div class="field"><label>出貨日期</label><input type="date" id="modalShipDate"></div>
             <button type="submit" class="btn btn-primary" style="margin-top: 10px;">確認建立並進入</button>
@@ -184,7 +189,7 @@
     </div>
 </div>
 
-<!-- 📦 彈窗 B：加入色號 Modal -->
+<!-- 📦 彈窗 B：加入色號 Modal (送出後自動關閉) -->
 <div id="itemModal" class="modal-overlay">
     <div class="modal-card">
         <div class="modal-header">
@@ -208,7 +213,7 @@
 </div>
 
 <!-- 📷 相機掃描 QR 彈窗 -->
-<div id="scannerModal" class="modal-overlay">
+<div id="scannerModal" class="modal-overlay" style="z-index: 1100;">
     <div class="modal-card" style="text-align: center;">
         <div class="modal-header">
             <h3>對準訂單 QR Code</h3>
@@ -223,7 +228,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script>
-    let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDBV6')) || {};
+    let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDBV7')) || {};
     let colorCatalog = JSON.parse(localStorage.getItem('colorCatalogDB')) || {};
     let currentOrder = null;
     let videoStream = null;
@@ -269,7 +274,7 @@
         openOrder(id);
     });
 
-    // --- 彈窗 B 控制：加入色號 ---
+    // --- 彈窗 B 控制：加入色號 (送出後自動關閉) ---
     function openItemModal() {
         document.getElementById('itemModal').style.display = 'flex';
         setTimeout(() => document.getElementById('modalColorCode').focus(), 100);
@@ -280,7 +285,7 @@
         document.getElementById('modalDropdown').style.display = 'none';
     }
 
-    // --- 相機掃描 QR 核心 ---
+    // --- 相機掃描 QR 核心 (直接將結果帶入「新增訂單」的輸入框) ---
     function openScanner() {
         document.getElementById('scannerModal').style.display = 'flex';
         document.getElementById('scanStatus').textContent = '正在啟動相機...';
@@ -314,10 +319,12 @@
             
             const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "dontInvert" });
             if (code) {
-                const orderId = code.data.trim();
-                if (orderId) {
+                const scannedText = code.data.trim();
+                if (scannedText) {
                     closeScanner();
-                    handleScannedOrder(orderId);
+                    // 直接將掃到的內容填入「建立訂單」彈窗的單號輸入框
+                    document.getElementById('modalOrderId').value = scannedText;
+                    document.getElementById('modalOrderId').focus();
                     return;
                 }
             }
@@ -334,16 +341,6 @@
             videoStream = null;
         }
         document.getElementById('scannerModal').style.display = 'none';
-    }
-
-    function handleScannedOrder(orderId) {
-        if (!ordersDB[orderId]) {
-            const projectName = prompt(`掃描到新訂單：${orderId}\n請輸入【案名】：`, "") || "";
-            const shipDate = prompt(`請輸入【出貨日期】(例: 2026-06-30)：`, "") || "";
-            ordersDB[orderId] = { projectName: projectName.trim(), shipDate: shipDate.trim(), items: [] };
-            saveOrders();
-        }
-        openOrder(orderId);
     }
 
     // --- 色號對照表與彈窗 B 關鍵字搜尋 ---
@@ -436,8 +433,7 @@
 
         saveOrders(); 
         renderDetailViews();
-        closeItemModal();
-        openItemModal(); // 連續新增色號體驗優化
+        closeItemModal(); // 修正為送出後直接自動關閉彈窗
     });
 
     function renderCatalogTable() {
@@ -464,7 +460,7 @@
 
     function deleteColorRow(idx) { ordersDB[currentOrder].items.splice(idx, 1); saveOrders(); renderDetailViews(); }
     function deleteOrder(e, id) { e.stopPropagation(); if (confirm(`刪除訂單「${id}」？`)) { delete ordersDB[id]; saveOrders(); renderOrderList(); } }
-    function saveOrders() { localStorage.setItem('ordersMasterDBV6', JSON.stringify(ordersDB)); }
+    function saveOrders() { localStorage.setItem('ordersMasterDBV7', JSON.stringify(ordersDB)); }
 
     function renderOrderList() {
         const grid = document.getElementById('orderListGrid');
