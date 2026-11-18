@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系統櫃訂單分板系統 (彈窗互動版)</title>
+    <title>系統櫃訂單分板系統 (彈窗修復版)</title>
     <style>
         * { box-sizing: border-box; font-family: "Microsoft JhengHei", sans-serif; }
         html, body { overflow-x: hidden; max-width: 100vw; margin: 0; padding: 0; background: #eef2f6; color: #1f2937; }
@@ -59,4 +59,518 @@
         .mobile-view { display: none; }
         .mobile-card-item { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; margin-bottom: 14px; position: relative; }
         .mobile-card-header { font-size: 16px; font-weight: bold; color: #1e3a8a; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-        .mobile-sub-section { display: flex; justify-content: space-between; align-items: center; padding: 8
+        .mobile-sub-section { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; font-size: 14px; border-radius: 6px; margin-bottom: 6px; }
+        .mobile-sum-box { background: #f1f5f9; padding: 14px; border-radius: 8px; font-weight: bold; margin-top: 15px; display: flex; justify-content: space-around; text-align: center; }
+
+        table.catalog-table { width: 100%; border-collapse: collapse; }
+        .catalog-table th, .catalog-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 15px; }
+        .catalog-table th { background: #f8fafc; color: #334155; }
+
+        /* 通用彈窗樣式 (Modal) */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 1000; justify-content: center; align-items: center; padding: 15px; }
+        .modal-card { background: #fff; width: 100%; max-width: 450px; border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
+        .modal-header h3 { margin: 0; color: #1e3a8a; font-size: 18px; }
+        .modal-close { background: none; border: none; font-size: 20px; font-weight: bold; cursor: pointer; color: #64748b; }
+        .modal-body { display: flex; flex-direction: column; gap: 14px; }
+
+        @media (max-width: 768px) {
+            .desktop-view { display: none !important; }
+            .mobile-view { display: block !important; }
+            .container { padding: 12px; }
+            .card { padding: 16px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav-tabs">
+        <button id="tabOrdersBtn" class="tab-btn active" onclick="switchPage('orders')">📋 訂單分板作業</button>
+        <button id="tabCatalogBtn" class="tab-btn" onclick="switchPage('catalog')">🎨 色號對照表</button>
+    </div>
+    
+    <div id="pageOrders">
+        <div id="viewOrders">
+            <div class="card">
+                <div class="header-bar">
+                    <h2>訂單管理</h2>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button onclick="openOrderModal()" class="btn btn-primary">➕ 新增訂單</button>
+                        <button onclick="openScanner()" class="btn btn-scan">📷 掃描 QR 開單</button>
+                        <button onclick="exportAllCSV()" class="btn btn-export">匯出全部總表</button>
+                    </div>
+                </div>
+                <p style="color:#64748b; font-size:14px; margin:0;">點擊上方按鈕建立新訂單，或透過相機掃描 QR 碼快速開單。</p>
+            </div>
+            <div class="card">
+                <div class="header-bar"><h2>已建立的訂單列表</h2></div>
+                <div id="orderListGrid" class="order-grid"></div>
+            </div>
+        </div>
+        
+        <div id="viewDetail" style="display: none;">
+            <div class="card">
+                <div class="header-bar">
+                    <div>
+                        <button onclick="goBack()" class="btn btn-back" style="height: 38px; padding: 6px 14px; font-size: 14px;">返回列表</button>
+                        <span id="currentOrderTitle" style="font-size: 15px; font-weight: bold; margin-left: 10px; color: #1e3a8a;"></span>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="openItemModal()" class="btn btn-primary" style="height: 38px; padding: 6px 14px; font-size: 14px;">➕ 加入色號</button>
+                        <button onclick="exportSingleCSV()" class="btn btn-export" style="height: 38px; padding: 6px 14px; font-size: 14px;">匯出此單 Excel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🖥️ 電腦版：雙欄大表格 -->
+            <div class="card desktop-view" style="padding: 0; overflow-x: auto;">
+                <table class="align-table">
+                    <thead>
+                        <tr><th colspan="2" class="th-nesting">Nesting</th><th colspan="2" class="th-saw">電子鋸</th><th rowspan="2" style="width: 80px; background:#f1f5f9; font-size:13px;">操作</th></tr>
+                        <tr><th class="sub-nesting" style="width: 32%;">色號 / 木名</th><th class="sub-nesting divider" style="width: 14%;">數量</th><th class="sub-saw" style="width: 32%;">色號 / 木名</th><th class="sub-saw" style="width: 14%;">數量</th></tr>
+                    </thead>
+                    <tbody id="detailTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- 📱 手機版：卡片流模式 -->
+            <div class="mobile-view">
+                <div id="mobileCardContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="pageCatalog" style="display: none;">
+        <div class="card">
+            <div class="header-bar"><h2>新增 / 修改 色號對照</h2></div>
+            <form id="catalogForm" class="row">
+                <div class="field" style="max-width: 200px;"><label>色號 *</label><input type="text" id="catCode" placeholder="例: H3303" required autocomplete="off"></div>
+                <div class="field" style="max-width: 300px;"><label>木名 *</label><input type="text" id="catName" placeholder="例: 漢密爾頓橡木" required autocomplete="off"></div>
+                <button type="submit" class="btn btn-primary">儲存對照</button>
+            </form>
+        </div>
+        <div class="card">
+            <div class="header-bar"><h2>📥 批次匯入對照表</h2></div>
+            <p style="font-size:13px; color:#475569; margin-top:0;">每行一筆，用 <strong>Tab</strong>、<strong>空格</strong> 或 <strong>逗號</strong> 分隔。</p>
+            <textarea id="batchInput" rows="4" style="width:100%;" placeholder="H3303 漢密爾頓橡木&#10;701 雪白"></textarea>
+            <div style="margin-top: 12px; display:flex; justify-content:space-between;">
+                <button type="button" onclick="batchImportCatalog()" class="btn btn-export">⚡ 執行批次匯入</button>
+                <button type="button" onclick="clearCatalog()" class="btn btn-del" style="height: 46px; font-size: 14px;">清空全部</button>
+            </div>
+        </div>
+        <div class="card">
+            <div class="header-bar"><h2>已建檔色號（<span id="catalogCount">0</span> 筆）</h2><input type="text" id="searchCatalog" placeholder="搜尋色號或木名..." style="width: 220px; padding: 9px 12px;" autocomplete="off"></div>
+            <table class="catalog-table">
+                <thead><tr><th>色號</th><th>木名</th><th style="width: 120px;">操作</th></tr></thead>
+                <tbody id="catalogTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 📦 彈窗 A：建立訂單 Modal -->
+<div id="orderModal" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>建立新訂單</h3>
+            <button class="modal-close" onclick="closeOrderModal()">&times;</button>
+        </div>
+        <form id="orderModalForm" class="modal-body">
+            <div class="field"><label>新訂單號 *</label><input type="text" id="modalOrderId" placeholder="例: ORD-001" required autocomplete="off"></div>
+            <div class="field"><label>案名</label><input type="text" id="modalProjectName" placeholder="例: 王先生案" autocomplete="off"></div>
+            <div class="field"><label>出貨日期</label><input type="date" id="modalShipDate"></div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 10px;">確認建立並進入</button>
+        </form>
+    </div>
+</div>
+
+<!-- 📦 彈窗 B：加入色號 Modal -->
+<div id="itemModal" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>加入板材色號</h3>
+            <button class="modal-close" onclick="closeItemModal()">&times;</button>
+        </div>
+        <form id="itemModalForm" class="modal-body">
+            <div class="field">
+                <label>板材色號 *</label>
+                <input type="text" id="modalColorCode" placeholder="輸入色號或木名關鍵字..." autocomplete="off" required>
+                <div id="modalDropdown" class="autocomplete-dropdown"></div>
+            </div>
+            <div class="field"><label>木名 *</label><input type="text" id="modalWoodName" placeholder="自動帶出" required autocomplete="off"></div>
+            <div class="row" style="gap: 10px;">
+                <div class="field"><label style="color:#1e40af;">Nesting 數</label><input type="number" id="modalNestingQty" min="0" placeholder="留空"></div>
+                <div class="field"><label style="color:#b45309;">電子鋸 數</label><input type="number" id="modalSawQty" min="0" placeholder="留空"></div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 10px;">確認加入色號</button>
+        </form>
+    </div>
+</div>
+
+<!-- 📷 相機掃描 QR 彈窗 -->
+<div id="scannerModal" class="modal-overlay">
+    <div class="modal-card" style="text-align: center;">
+        <div class="modal-header">
+            <h3>對準訂單 QR Code</h3>
+            <button class="modal-close" onclick="closeScanner()">&times;</button>
+        </div>
+        <video id="videoElement" autoplay playsinline style="width: 100%; height: 240px; object-fit: cover; border-radius: 8px; background: #000;"></video>
+        <canvas id="canvasElement" style="display:none;"></canvas>
+        <p id="scanStatus" style="font-size: 13px; color: #64748b; margin: 10px 0;">正在尋找 QR Code...</p>
+        <button type="button" onclick="closeScanner()" class="btn btn-back" style="width: 100%;">關閉相機</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script>
+    let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDBV6')) || {};
+    let colorCatalog = JSON.parse(localStorage.getItem('colorCatalogDB')) || {};
+    let currentOrder = null;
+    let videoStream = null;
+    let scanningActive = false;
+
+    renderOrderList();
+
+    function switchPage(page) {
+        document.getElementById('pageOrders').style.display = page === 'orders' ? 'block' : 'none';
+        document.getElementById('pageCatalog').style.display = page === 'catalog' ? 'block' : 'none';
+        document.getElementById('tabOrdersBtn').classList.toggle('active', page === 'orders');
+        document.getElementById('tabCatalogBtn').classList.toggle('active', page === 'catalog');
+        if (page === 'catalog') renderCatalogTable();
+        if (page === 'orders' && !currentOrder) renderOrderList();
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    // --- 彈窗 A 控制：建立訂單 ---
+    function openOrderModal() {
+        document.getElementById('orderModal').style.display = 'flex';
+        setTimeout(() => document.getElementById('modalOrderId').focus(), 100);
+    }
+    function closeOrderModal() {
+        document.getElementById('orderModal').style.display = 'none';
+        document.getElementById('orderModalForm').reset();
+    }
+
+    document.getElementById('orderModalForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const id = document.getElementById('modalOrderId').value.trim();
+        const projectName = document.getElementById('modalProjectName').value.trim();
+        const shipDate = document.getElementById('modalShipDate').value;
+        if (!id) return;
+
+        if (!ordersDB[id]) { ordersDB[id] = { projectName, shipDate, items: [] }; }
+        else { ordersDB[id].projectName = projectName; ordersDB[id].shipDate = shipDate; }
+        saveOrders();
+        closeOrderModal();
+        openOrder(id);
+    });
+
+    // --- 彈窗 B 控制：加入色號 ---
+    function openItemModal() {
+        document.getElementById('itemModal').style.display = 'flex';
+        setTimeout(() => document.getElementById('modalColorCode').focus(), 100);
+    }
+    function closeItemModal() {
+        document.getElementById('itemModal').style.display = 'none';
+        document.getElementById('itemModalForm').reset();
+        document.getElementById('modalDropdown').style.display = 'none';
+    }
+
+    // --- 相機掃描 QR 核心 ---
+    function openScanner() {
+        document.getElementById('scannerModal').style.display = 'flex';
+        document.getElementById('scanStatus').textContent = '正在啟動相機...';
+        scanningActive = true;
+
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(stream => {
+                videoStream = stream;
+                const video = document.getElementById('videoElement');
+                video.srcObject = stream;
+                video.play();
+                document.getElementById('scanStatus').textContent = '請將 QR Code 對準鏡頭內';
+                requestAnimationFrame(scanTick);
+            })
+            .catch(() => {
+                alert('無法存取相機，請確認瀏覽器相機權限！');
+                closeScanner();
+            });
+    }
+
+    function scanTick() {
+        if (!scanningActive) return;
+        const video = document.getElementById('videoElement');
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            const canvas = document.getElementById('canvasElement');
+            const ctx = canvas.getContext('2d');
+            canvas.height = video.videoHeight;
+            canvas.width = video.videoWidth;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            
+            const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "dontInvert" });
+            if (code) {
+                const orderId = code.data.trim();
+                if (orderId) {
+                    closeScanner();
+                    handleScannedOrder(orderId);
+                    return;
+                }
+            }
+        }
+        if (scanningActive) {
+            requestAnimationFrame(scanTick);
+        }
+    }
+
+    function closeScanner() {
+        scanningActive = false;
+        if (videoStream) {
+            videoStream.getTracks().forEach(track => track.stop());
+            videoStream = null;
+        }
+        document.getElementById('scannerModal').style.display = 'none';
+    }
+
+    function handleScannedOrder(orderId) {
+        if (!ordersDB[orderId]) {
+            const projectName = prompt(`掃描到新訂單：${orderId}\n請輸入【案名】：`, "") || "";
+            const shipDate = prompt(`請輸入【出貨日期】(例: 2026-06-30)：`, "") || "";
+            ordersDB[orderId] = { projectName: projectName.trim(), shipDate: shipDate.trim(), items: [] };
+            saveOrders();
+        }
+        openOrder(orderId);
+    }
+
+    // --- 色號對照表與彈窗 B 關鍵字搜尋 ---
+    document.getElementById('catalogForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const code = document.getElementById('catCode').value.trim();
+        const name = document.getElementById('catName').value.trim();
+        if (!code || !name) return;
+        colorCatalog[code] = name; 
+        saveCatalog();
+        document.getElementById('catCode').value = ''; 
+        document.getElementById('catName').value = '';
+        document.getElementById('catCode').focus(); 
+        renderCatalogTable();
+    });
+
+    function batchImportCatalog() {
+        const text = document.getElementById('batchInput').value.trim();
+        if (!text) return alert('請先貼上資料！');
+        let count = 0;
+        text.split(/\r?\n/).forEach(line => {
+            const match = line.trim().match(/^([^\t,，\s]+)[\t,，\s]+(.+)$/);
+            if (match && match[1].trim() && match[2].trim()) {
+                colorCatalog[match[1].trim()] = match[2].trim();
+                count++;
+            }
+        });
+        if (count > 0) { saveCatalog(); renderCatalogTable(); document.getElementById('batchInput').value = ''; alert(`成功匯入 ${count} 筆！`); }
+        else alert('格式無法辨識！');
+    }
+
+    function clearCatalog() { if (confirm('確定清空色號庫？')) { colorCatalog = {}; saveCatalog(); renderCatalogTable(); } }
+    document.getElementById('searchCatalog').addEventListener('input', renderCatalogTable);
+    function editCatalogItem(code) { document.getElementById('catCode').value = code; document.getElementById('catName').value = colorCatalog[code] || ''; document.getElementById('catName').focus(); }
+    function deleteCatalogItem(code) { if (confirm(`刪除色號「${code}」？`)) { delete colorCatalog[code]; saveCatalog(); renderCatalogTable(); } }
+    
+    function saveCatalog() { localStorage.setItem('colorCatalogDB', JSON.stringify(colorCatalog)); }
+
+    const modalColorInput = document.getElementById('modalColorCode');
+    const modalWoodInput = document.getElementById('modalWoodName');
+    const modalDropdown = document.getElementById('modalDropdown');
+
+    modalColorInput.addEventListener('input', function() {
+        const keyword = this.value.trim().toLowerCase();
+        const matchedKey = Object.keys(colorCatalog).find(k => k.toLowerCase() === keyword);
+        if (matchedKey) modalWoodInput.value = colorCatalog[matchedKey];
+
+        if (!keyword) { modalDropdown.style.display = 'none'; return; }
+
+        const filtered = Object.entries(colorCatalog).filter(([c, n]) => 
+            c.toLowerCase().includes(keyword) || n.toLowerCase().includes(keyword)
+        );
+
+        if (filtered.length > 0) {
+            modalDropdown.innerHTML = filtered.map(([c, n]) => `
+                <div class="autocomplete-item" onclick="selectModalDropdownItem('${escapeHtml(c)}', '${escapeHtml(n)}')">
+                    <strong>${escapeHtml(c)}</strong>
+                    <span style="color:#64748b;">${escapeHtml(n)}</span>
+                </div>
+            `).join('');
+            modalDropdown.style.display = 'block';
+        } else {
+            modalDropdown.style.display = 'none';
+        }
+    });
+
+    function selectModalDropdownItem(code, name) {
+        modalColorInput.value = code;
+        modalWoodInput.value = name;
+        modalDropdown.style.display = 'none';
+        document.getElementById('modalNestingQty').focus();
+    }
+
+    document.getElementById('itemModalForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const colorCode = modalColorInput.value.trim();
+        const woodName = modalWoodInput.value.trim();
+        const nQty = parseInt(document.getElementById('modalNestingQty').value, 10) || 0;
+        const sQty = parseInt(document.getElementById('modalSawQty').value, 10) || 0;
+        
+        if (nQty === 0 && sQty === 0) return alert('請至少輸入一邊的數量！');
+        if (!colorCatalog[colorCode]) { colorCatalog[colorCode] = woodName; saveCatalog(); }
+        
+        let orderObj = ordersDB[currentOrder];
+        if (!orderObj.items) orderObj.items = [];
+
+        const existing = orderObj.items.find(i => i.colorCode === colorCode);
+        if (existing) { existing.woodName = woodName; existing.nestingQty += nQty; existing.sawQty += sQty; }
+        else { orderObj.items.push({ colorCode, woodName, nestingQty: nQty, sawQty: sQty }); }
+
+        saveOrders(); 
+        renderDetailViews();
+        closeItemModal();
+        openItemModal(); // 連續新增色號體驗優化
+    });
+
+    function renderCatalogTable() {
+        const kw = document.getElementById('searchCatalog').value.trim().toLowerCase();
+        const entries = Object.entries(colorCatalog).filter(([c, n]) => c.toLowerCase().includes(kw) || n.toLowerCase().includes(kw));
+        document.getElementById('catalogCount').textContent = Object.keys(colorCatalog).length;
+        document.getElementById('catalogTableBody').innerHTML = entries.length ? entries.map(([code, name]) => `
+            <tr><td><strong>${escapeHtml(code)}</strong></td><td>${escapeHtml(name)}</td>
+            <td><button class="btn" style="background:#3b82f6;color:#fff;padding:4px 8px;font-size:12px;height:32px;" onclick="editCatalogItem('${escapeHtml(code)}')">修改</button>
+            <button class="btn-del" onclick="deleteCatalogItem('${escapeHtml(code)}')">刪除</button></td></tr>
+        `).join('') : `<tr><td colspan="3" style="text-align:center;color:#9ca3af;padding:20px;">無符合資料</td></tr>`;
+    }
+
+    function openOrder(orderId) {
+        currentOrder = orderId;
+        const orderData = ordersDB[orderId];
+        document.getElementById('viewOrders').style.display = 'none';
+        document.getElementById('viewDetail').style.display = 'block';
+        document.getElementById('currentOrderTitle').textContent = `[${orderId}] ${orderData.projectName || '未命名'} (出貨: ${orderData.shipDate || '未定'})`;
+        renderDetailViews(); 
+    }
+
+    function goBack() { currentOrder = null; document.getElementById('viewDetail').style.display = 'none'; document.getElementById('viewOrders').style.display = 'block'; renderOrderList(); }
+
+    function deleteColorRow(idx) { ordersDB[currentOrder].items.splice(idx, 1); saveOrders(); renderDetailViews(); }
+    function deleteOrder(e, id) { e.stopPropagation(); if (confirm(`刪除訂單「${id}」？`)) { delete ordersDB[id]; saveOrders(); renderOrderList(); } }
+    function saveOrders() { localStorage.setItem('ordersMasterDBV6', JSON.stringify(ordersDB)); }
+
+    function renderOrderList() {
+        const grid = document.getElementById('orderListGrid');
+        const keys = Object.keys(ordersDB).reverse();
+        grid.innerHTML = keys.length ? keys.map(id => {
+            const orderObj = ordersDB[id];
+            const items = orderObj.items || [];
+            const nSum = items.reduce((s, i) => s + i.nestingQty, 0);
+            const sSum = items.reduce((s, i) => s + i.sawQty, 0);
+            return `
+                <div class="order-item" onclick="openOrder('${escapeHtml(id)}')">
+                    <button class="order-del-top" onclick="deleteOrder(event, '${escapeHtml(id)}')">刪除</button>
+                    <h3>${escapeHtml(id)}</h3>
+                    <div class="order-meta">
+                        案名：<strong>${escapeHtml(orderObj.projectName || '未填寫')}</strong><br>
+                        出貨日：<strong>${escapeHtml(orderObj.shipDate || '未定')}</strong><br>
+                        Nesting：<strong>${nSum}</strong> 片 ｜ 電子鋸：<strong>${sSum}</strong> 片
+                    </div>
+                </div>`;
+        }).join('') : `<div style="color:#6b7280;grid-column:1/-1;text-align:center;padding:20px;">尚無訂單</div>`;
+    }
+
+    function renderDetailViews() {
+        const orderObj = ordersDB[currentOrder] || { items: [] };
+        const items = orderObj.items || [];
+        
+        const desktopBody = document.getElementById('detailTableBody');
+        const mobileContainer = document.getElementById('mobileCardContainer');
+
+        if (!items.length) {
+            desktopBody.innerHTML = `<tr><td colspan="5" style="color:#9ca3af;padding:30px;">尚無色號資料，點擊上方「加入色號」開始建立。</td></tr>`;
+            mobileContainer.innerHTML = `<div style="text-align:center;color:#9ca3af;padding:30px;background:#fff;border-radius:8px;">尚無色號資料</div>`;
+            return;
+        }
+
+        let nTotal = 0, sTotal = 0;
+
+        desktopBody.innerHTML = items.map((i, idx) => {
+            nTotal += i.nestingQty; sTotal += i.sawQty;
+            const lbl = `<span class="merged-text">${escapeHtml(i.colorCode)}</span><span class="merged-sub">${escapeHtml(i.woodName)}</span>`;
+            return `<tr>
+                <td class="cell-n">${i.nestingQty > 0 ? lbl : ''}</td>
+                <td class="cell-n divider qty-bold">${i.nestingQty > 0 ? i.nestingQty : ''}</td>
+                <td class="cell-s">${i.sawQty > 0 ? lbl : ''}</td>
+                <td class="cell-s qty-bold">${i.sawQty > 0 ? i.sawQty : ''}</td>
+                <td><button class="btn-del" onclick="deleteColorRow(${idx})">刪除</button></td>
+            </tr>`;
+        }).join('') + `<tr class="sum-row"><td style="text-align:right;">Nesting 合計：</td><td class="divider" style="color:#1e40af;font-size:17px;">${nTotal} 片</td><td style="text-align:right;">電子鋸 合計：</td><td style="color:#b45309;font-size:17px;">${sTotal} 片</td><td></td></tr>`;
+
+        mobileContainer.innerHTML = items.map((i, idx) => {
+            return `
+                <div class="mobile-card-item">
+                    <div class="mobile-card-header">
+                        <span>${escapeHtml(i.colorCode)} <small style="color:#475569;font-weight:normal;">(${escapeHtml(i.woodName)})</small></span>
+                        <button class="btn-del" onclick="deleteColorRow(${idx})">刪除</button>
+                    </div>
+                    <div class="mobile-sub-section" style="background:#eff6ff;">
+                        <span style="color:#1e40af;font-weight:bold;">Nesting 加工</span>
+                        <span class="qty-bold" style="color:#1e40af;">${i.nestingQty > 0 ? i.nestingQty + ' 片' : '無'}</span>
+                    </div>
+                    <div class="mobile-sub-section" style="background:#fffbeb;">
+                        <span style="color:#92400e;font-weight:bold;">電子鋸 加工</span>
+                        <span class="qty-bold" style="color:#b45309;">${i.sawQty > 0 ? i.sawQty + ' 片' : '無'}</span>
+                    </div>
+                </div>`;
+        }).join('') + `
+            <div class="mobile-sum-box">
+                <div>Nesting 總計<br><span style="color:#1e40af;font-size:18px;">${nTotal} 片</span></div>
+                <div style="border-left:1px solid #cbd5e1;padding-left:15px;">電子鋸 總計<br><span style="color:#b45309;font-size:18px;">${sTotal} 片</span></div>
+            </div>`;
+    }
+
+    function exportSingleCSV() {
+        const orderObj = ordersDB[currentOrder] || { items: [] };
+        const items = orderObj.items || [];
+        if (!items.length) return alert('無資料可匯出');
+        let csv = `\uFEFF訂單號,案名,出貨日期,Nesting(色號/木名),Nesting數量,電子鋸(色號/木名),電子鋸數量\n`;
+        items.forEach(i => {
+            const nStr = i.nestingQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
+            const sStr = i.sawQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
+            csv += `"${currentOrder}","${orderObj.projectName || ''}","${orderObj.shipDate || ''}","${nStr}",${i.nestingQty || ''},"${sStr}",${i.sawQty || ''}\n`;
+        });
+        downloadCSV(csv, `訂單_${currentOrder}.csv`);
+    }
+
+    function exportAllCSV() {
+        const keys = Object.keys(ordersDB);
+        if (!keys.length) return alert('無資料可匯出');
+        let csv = `\uFEFF訂單號,案名,出貨日期,Nesting(色號/木名),Nesting數量,電子鋸(色號/木名),電子鋸數量\n`;
+        keys.forEach(id => {
+            const orderObj = ordersDB[id];
+            (orderObj.items || []).forEach(i => {
+                const nStr = i.nestingQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
+                const sStr = i.sawQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
+                csv += `"${id}","${orderObj.projectName || ''}","${orderObj.shipDate || ''}","${nStr}",${i.nestingQty || ''},"${sStr}",${i.sawQty || ''}\n`;
+            });
+        });
+        downloadCSV(csv, `全部訂單分板總表.csv`);
+    }
+
+    function downloadCSV(csv, name) {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+        a.download = name; 
+        a.click();
+    }
+</script>
+</body>
+</html>
