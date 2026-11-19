@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系統櫃訂單分板系統 (掃描整合進彈窗版)</title>
+    <title>系統櫃訂單分板系統</title>
     <style>
         * { box-sizing: border-box; font-family: "Microsoft JhengHei", sans-serif; }
         html, body { overflow-x: hidden; max-width: 100vw; margin: 0; padding: 0; background: #eef2f6; color: #1f2937; }
@@ -28,7 +28,7 @@
         .btn-back { background: #475569; color: #fff; }
         .btn-export { background: #059669; color: #fff; }
         .btn-scan { background: #7c3aed; color: #fff; }
-        .btn-del { background: #ef4444; color: #fff; padding: 6px 12px; font-size: 13px; height: 32px; border-radius: 6px; }
+        .btn-del { background: #ef4444; color: #fff; padding: 6px 10px; font-size: 13px; height: 32px; border-radius: 6px; }
         
         .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; width: 100%; }
         .order-item { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 18px; cursor: pointer; position: relative; }
@@ -41,9 +41,10 @@
         .autocomplete-item { padding: 11px 14px; font-size: 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; }
         .autocomplete-item:hover { background: #eff6ff; color: #1d4ed8; }
 
-        .desktop-view { display: block; }
-        table.align-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .align-table th, .align-table td { padding: 14px 12px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 15px; }
+        /* 統一雙欄大表格（桌機、平板、手機皆維持同一種版面） */
+        .table-wrap { padding: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table.align-table { width: 100%; min-width: 560px; border-collapse: collapse; table-layout: fixed; }
+        .align-table th, .align-table td { padding: 14px 10px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 15px; word-break: break-word; }
         .th-nesting { background: #dbeafe; color: #1e40af; font-size: 16px; border-right: 2px solid #94a3b8; }
         .th-saw { background: #fef3c7; color: #92400e; font-size: 16px; }
         .sub-nesting { background: #eff6ff; color: #1e3a8a; font-size: 13px; }
@@ -56,29 +57,26 @@
         .qty-bold { font-weight: bold; font-size: 18px; color: #0f172a; }
         .sum-row td { background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; font-size: 15px; }
 
-        .mobile-view { display: none; }
-        .mobile-card-item { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; margin-bottom: 14px; position: relative; }
-        .mobile-card-header { font-size: 16px; font-weight: bold; color: #1e3a8a; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-        .mobile-sub-section { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; font-size: 14px; border-radius: 6px; margin-bottom: 6px; }
-        .mobile-sum-box { background: #f1f5f9; padding: 14px; border-radius: 8px; font-weight: bold; margin-top: 15px; display: flex; justify-content: space-around; text-align: center; }
-
         table.catalog-table { width: 100%; border-collapse: collapse; }
         .catalog-table th, .catalog-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 15px; }
         .catalog-table th { background: #f8fafc; color: #334155; }
 
         /* 通用彈窗樣式 (Modal) */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 1000; justify-content: center; align-items: center; padding: 15px; }
-        .modal-card { background: #fff; width: 100%; max-width: 450px; border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; }
+        .modal-card { background: #fff; width: 100%; max-width: 450px; border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; max-height: 90vh; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
         .modal-header h3 { margin: 0; color: #1e3a8a; font-size: 18px; }
-        .modal-close { background: none; border: none; font-size: 20px; font-weight: bold; cursor: pointer; color: #64748b; }
+        .modal-close { background: none; border: none; font-size: 22px; font-weight: bold; cursor: pointer; color: #64748b; }
         .modal-body { display: flex; flex-direction: column; gap: 14px; }
 
         @media (max-width: 768px) {
-            .desktop-view { display: none !important; }
-            .mobile-view { display: block !important; }
             .container { padding: 12px; }
             .card { padding: 16px; }
+            .tab-btn { padding: 12px 10px; font-size: 14px; }
+            .align-table th, .align-table td { padding: 10px 6px; font-size: 13px; }
+            .merged-text { font-size: 13px; }
+            .merged-sub { display: block; margin-left: 0; font-size: 12px; }
+            .qty-bold { font-size: 15px; }
         }
     </style>
 </head>
@@ -95,11 +93,11 @@
                 <div class="header-bar">
                     <h2>訂單管理</h2>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button onclick="openOrderModal()" class="btn btn-primary">➕ 新建訂單 (含相機掃描)</button>
+                        <button onclick="openOrderModal()" class="btn btn-primary">➕ 新建訂單</button>
                         <button onclick="exportAllCSV()" class="btn btn-export">匯出全部總表</button>
                     </div>
                 </div>
-                <p style="color:#64748b; font-size:14px; margin:0;">點擊上方按鈕建立新訂單，或在彈窗內直接使用相機掃描 QR 碼代入單號。</p>
+                <p style="color:#64748b; font-size:14px; margin:0;">點擊「新建訂單」建立新單，或在彈窗內使用相機掃描 QR 碼代入單號。</p>
             </div>
             <div class="card">
                 <div class="header-bar"><h2>已建立的訂單列表</h2></div>
@@ -114,27 +112,22 @@
                         <button onclick="goBack()" class="btn btn-back" style="height: 38px; padding: 6px 14px; font-size: 14px;">返回列表</button>
                         <span id="currentOrderTitle" style="font-size: 15px; font-weight: bold; margin-left: 10px; color: #1e3a8a;"></span>
                     </div>
-                    <div style="display: flex; gap: 10px;">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button onclick="openItemModal()" class="btn btn-primary" style="height: 38px; padding: 6px 14px; font-size: 14px;">➕ 加入色號</button>
                         <button onclick="exportSingleCSV()" class="btn btn-export" style="height: 38px; padding: 6px 14px; font-size: 14px;">匯出此單 Excel</button>
                     </div>
                 </div>
             </div>
 
-            <!-- 🖥️ 電腦版：雙欄大表格 -->
-            <div class="card desktop-view" style="padding: 0; overflow-x: auto;">
+            <!-- 雙欄大表格（桌機、平板、手機統一使用） -->
+            <div class="card table-wrap">
                 <table class="align-table">
                     <thead>
-                        <tr><th colspan="2" class="th-nesting">Nesting</th><th colspan="2" class="th-saw">電子鋸</th><th rowspan="2" style="width: 80px; background:#f1f5f9; font-size:13px;">操作</th></tr>
+                        <tr><th colspan="2" class="th-nesting">Nesting</th><th colspan="2" class="th-saw">電子鋸</th><th rowspan="2" style="width: 72px; background:#f1f5f9; font-size:13px;">操作</th></tr>
                         <tr><th class="sub-nesting" style="width: 32%;">色號 / 木名</th><th class="sub-nesting divider" style="width: 14%;">數量</th><th class="sub-saw" style="width: 32%;">色號 / 木名</th><th class="sub-saw" style="width: 14%;">數量</th></tr>
                     </thead>
                     <tbody id="detailTableBody"></tbody>
                 </table>
-            </div>
-
-            <!-- 📱 手機版：卡片流模式 -->
-            <div class="mobile-view">
-                <div id="mobileCardContainer"></div>
             </div>
         </div>
     </div>
@@ -152,17 +145,19 @@
             <div class="header-bar"><h2>📥 批次匯入對照表</h2></div>
             <p style="font-size:13px; color:#475569; margin-top:0;">每行一筆，用 <strong>Tab</strong>、<strong>空格</strong> 或 <strong>逗號</strong> 分隔。</p>
             <textarea id="batchInput" rows="4" style="width:100%;" placeholder="H3303 漢密爾頓橡木&#10;701 雪白"></textarea>
-            <div style="margin-top: 12px; display:flex; justify-content:space-between;">
+            <div style="margin-top: 12px; display:flex; justify-content:space-between; gap: 10px; flex-wrap: wrap;">
                 <button type="button" onclick="batchImportCatalog()" class="btn btn-export">⚡ 執行批次匯入</button>
                 <button type="button" onclick="clearCatalog()" class="btn btn-del" style="height: 46px; font-size: 14px;">清空全部</button>
             </div>
         </div>
         <div class="card">
             <div class="header-bar"><h2>已建檔色號（<span id="catalogCount">0</span> 筆）</h2><input type="text" id="searchCatalog" placeholder="搜尋色號或木名..." style="width: 220px; padding: 9px 12px;" autocomplete="off"></div>
-            <table class="catalog-table">
-                <thead><tr><th>色號</th><th>木名</th><th style="width: 120px;">操作</th></tr></thead>
-                <tbody id="catalogTableBody"></tbody>
-            </table>
+            <div style="overflow-x: auto;">
+                <table class="catalog-table">
+                    <thead><tr><th>色號</th><th>木名</th><th style="width: 130px;">操作</th></tr></thead>
+                    <tbody id="catalogTableBody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -179,7 +174,7 @@
                 <label>新訂單號 *</label>
                 <div style="display: flex; gap: 8px;">
                     <input type="text" id="modalOrderId" placeholder="輸入或掃描 QR 碼" required autocomplete="off" style="flex: 1;">
-                    <button type="button" onclick="openScanner()" class="btn btn-scan" style="height: 44px; padding: 0 14px; font-size: 14px;">📷 掃描</button>
+                    <button type="button" onclick="openScanner()" class="btn btn-scan" style="height: 44px; padding: 0 14px; font-size: 14px; white-space: nowrap;">📷 掃描</button>
                 </div>
             </div>
             <div class="field"><label>案名</label><input type="text" id="modalProjectName" placeholder="例: 王先生案" autocomplete="off"></div>
@@ -228,7 +223,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script>
-    let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDBV7')) || {};
+    let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDBV8')) || {};
     let colorCatalog = JSON.parse(localStorage.getItem('colorCatalogDB')) || {};
     let currentOrder = null;
     let videoStream = null;
@@ -250,7 +245,6 @@
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
 
-    // --- 彈窗 A 控制：建立訂單 ---
     function openOrderModal() {
         document.getElementById('orderModal').style.display = 'flex';
         setTimeout(() => document.getElementById('modalOrderId').focus(), 100);
@@ -274,7 +268,6 @@
         openOrder(id);
     });
 
-    // --- 彈窗 B 控制：加入色號 (送出後自動關閉) ---
     function openItemModal() {
         document.getElementById('itemModal').style.display = 'flex';
         setTimeout(() => document.getElementById('modalColorCode').focus(), 100);
@@ -285,7 +278,6 @@
         document.getElementById('modalDropdown').style.display = 'none';
     }
 
-    // --- 相機掃描 QR 核心 (直接將結果帶入「新增訂單」的輸入框) ---
     function openScanner() {
         document.getElementById('scannerModal').style.display = 'flex';
         document.getElementById('scanStatus').textContent = '正在啟動相機...';
@@ -322,7 +314,6 @@
                 const scannedText = code.data.trim();
                 if (scannedText) {
                     closeScanner();
-                    // 直接將掃到的內容填入「建立訂單」彈窗的單號輸入框
                     document.getElementById('modalOrderId').value = scannedText;
                     document.getElementById('modalOrderId').focus();
                     return;
@@ -343,7 +334,6 @@
         document.getElementById('scannerModal').style.display = 'none';
     }
 
-    // --- 色號對照表與彈窗 B 關鍵字搜尋 ---
     document.getElementById('catalogForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const code = document.getElementById('catCode').value.trim();
@@ -432,8 +422,8 @@
         else { orderObj.items.push({ colorCode, woodName, nestingQty: nQty, sawQty: sQty }); }
 
         saveOrders(); 
-        renderDetailViews();
-        closeItemModal(); // 修正為送出後直接自動關閉彈窗
+        renderDetailTable();
+        closeItemModal();
     });
 
     function renderCatalogTable() {
@@ -453,14 +443,14 @@
         document.getElementById('viewOrders').style.display = 'none';
         document.getElementById('viewDetail').style.display = 'block';
         document.getElementById('currentOrderTitle').textContent = `[${orderId}] ${orderData.projectName || '未命名'} (出貨: ${orderData.shipDate || '未定'})`;
-        renderDetailViews(); 
+        renderDetailTable(); 
     }
 
     function goBack() { currentOrder = null; document.getElementById('viewDetail').style.display = 'none'; document.getElementById('viewOrders').style.display = 'block'; renderOrderList(); }
 
-    function deleteColorRow(idx) { ordersDB[currentOrder].items.splice(idx, 1); saveOrders(); renderDetailViews(); }
+    function deleteColorRow(idx) { ordersDB[currentOrder].items.splice(idx, 1); saveOrders(); renderDetailTable(); }
     function deleteOrder(e, id) { e.stopPropagation(); if (confirm(`刪除訂單「${id}」？`)) { delete ordersDB[id]; saveOrders(); renderOrderList(); } }
-    function saveOrders() { localStorage.setItem('ordersMasterDBV7', JSON.stringify(ordersDB)); }
+    function saveOrders() { localStorage.setItem('ordersMasterDBV8', JSON.stringify(ordersDB)); }
 
     function renderOrderList() {
         const grid = document.getElementById('orderListGrid');
@@ -483,23 +473,21 @@
         }).join('') : `<div style="color:#6b7280;grid-column:1/-1;text-align:center;padding:20px;">尚無訂單</div>`;
     }
 
-    function renderDetailViews() {
+    function renderDetailTable() {
         const orderObj = ordersDB[currentOrder] || { items: [] };
         const items = orderObj.items || [];
-        
-        const desktopBody = document.getElementById('detailTableBody');
-        const mobileContainer = document.getElementById('mobileCardContainer');
+        const tbody = document.getElementById('detailTableBody');
 
         if (!items.length) {
-            desktopBody.innerHTML = `<tr><td colspan="5" style="color:#9ca3af;padding:30px;">尚無色號資料，點擊上方「加入色號」開始建立。</td></tr>`;
-            mobileContainer.innerHTML = `<div style="text-align:center;color:#9ca3af;padding:30px;background:#fff;border-radius:8px;">尚無色號資料</div>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="color:#9ca3af;padding:30px;">尚無色號資料，點擊上方「加入色號」開始建立。</td></tr>`;
             return;
         }
 
         let nTotal = 0, sTotal = 0;
 
-        desktopBody.innerHTML = items.map((i, idx) => {
-            nTotal += i.nestingQty; sTotal += i.sawQty;
+        tbody.innerHTML = items.map((i, idx) => {
+            nTotal += i.nestingQty;
+            sTotal += i.sawQty;
             const lbl = `<span class="merged-text">${escapeHtml(i.colorCode)}</span><span class="merged-sub">${escapeHtml(i.woodName)}</span>`;
             return `<tr>
                 <td class="cell-n">${i.nestingQty > 0 ? lbl : ''}</td>
@@ -509,28 +497,6 @@
                 <td><button class="btn-del" onclick="deleteColorRow(${idx})">刪除</button></td>
             </tr>`;
         }).join('') + `<tr class="sum-row"><td style="text-align:right;">Nesting 合計：</td><td class="divider" style="color:#1e40af;font-size:17px;">${nTotal} 片</td><td style="text-align:right;">電子鋸 合計：</td><td style="color:#b45309;font-size:17px;">${sTotal} 片</td><td></td></tr>`;
-
-        mobileContainer.innerHTML = items.map((i, idx) => {
-            return `
-                <div class="mobile-card-item">
-                    <div class="mobile-card-header">
-                        <span>${escapeHtml(i.colorCode)} <small style="color:#475569;font-weight:normal;">(${escapeHtml(i.woodName)})</small></span>
-                        <button class="btn-del" onclick="deleteColorRow(${idx})">刪除</button>
-                    </div>
-                    <div class="mobile-sub-section" style="background:#eff6ff;">
-                        <span style="color:#1e40af;font-weight:bold;">Nesting 加工</span>
-                        <span class="qty-bold" style="color:#1e40af;">${i.nestingQty > 0 ? i.nestingQty + ' 片' : '無'}</span>
-                    </div>
-                    <div class="mobile-sub-section" style="background:#fffbeb;">
-                        <span style="color:#92400e;font-weight:bold;">電子鋸 加工</span>
-                        <span class="qty-bold" style="color:#b45309;">${i.sawQty > 0 ? i.sawQty + ' 片' : '無'}</span>
-                    </div>
-                </div>`;
-        }).join('') + `
-            <div class="mobile-sum-box">
-                <div>Nesting 總計<br><span style="color:#1e40af;font-size:18px;">${nTotal} 片</span></div>
-                <div style="border-left:1px solid #cbd5e1;padding-left:15px;">電子鋸 總計<br><span style="color:#b45309;font-size:18px;">${sTotal} 片</span></div>
-            </div>`;
     }
 
     function exportSingleCSV() {
