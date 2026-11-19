@@ -31,6 +31,10 @@
         th.th-m2 { background: #fef3c7; color: #92400e; }
         .sum-row td { background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; }
 
+        /* 適中字級：色號清楚、木名不搶戲也不會過大 */
+        .code-big { font-size: 15px; font-weight: bold; color: #111827; }
+        .wood-big { font-size: 13.5px; font-weight: normal; color: #475569; margin-left: 6px; }
+
         .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); justify-content: center; align-items: center; padding: 16px; z-index: 999; }
         .modal-card { background: #fff; width: 100%; max-width: 440px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto; }
         .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; flex: 1; position: relative; }
@@ -351,7 +355,7 @@
         document.getElementById('detailBody').innerHTML = items.map((it, i) => {
             nSum += it.n; sSum += it.s;
             return `<tr>
-                <td class="col-color"><strong>${it.code}</strong> <span style="color:#475569;">${it.wood}</span></td>
+                <td class="col-color"><span class="code-big">${it.code}</span><span class="wood-big">${it.wood}</span></td>
                 <td><strong>${it.n || '-'}</strong></td>
                 <td><strong>${it.s || '-'}</strong></td>
                 <td><button type="button" class="btn btn-red" onclick="delItem(${i})">刪除</button></td>
