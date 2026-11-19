@@ -41,20 +41,20 @@
         .autocomplete-item { padding: 11px 14px; font-size: 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; }
         .autocomplete-item:hover { background: #eff6ff; color: #1d4ed8; }
 
-        /* 左側色號/木名 + 右側工段數量表格 */
+        /* 左側色號/木名 + 右側工段數量表格（比例緊湊化） */
         .table-wrap { padding: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        table.align-table { width: 100%; min-width: 520px; border-collapse: collapse; table-layout: fixed; }
-        .align-table th, .align-table td { padding: 14px 10px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 15px; word-break: break-word; }
-        .th-color { background: #f1f5f9; color: #0f172a; font-size: 15px; border-right: 2px solid #cbd5e1; text-align: left; padding-left: 16px !important; }
+        table.align-table { width: 100%; min-width: 500px; border-collapse: collapse; table-layout: fixed; }
+        .align-table th, .align-table td { padding: 13px 8px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 15px; word-break: break-word; }
+        .th-color { background: #f1f5f9; color: #0f172a; font-size: 15px; border-right: 2px solid #cbd5e1; text-align: left; padding-left: 14px !important; }
         .th-nesting { background: #dbeafe; color: #1e40af; font-size: 15px; border-right: 2px solid #94a3b8; }
         .th-saw { background: #fef3c7; color: #92400e; font-size: 15px; border-right: 2px solid #94a3b8; }
         .th-action { background: #f1f5f9; color: #334155; font-size: 13px; }
         .divider { border-right: 2px solid #94a3b8 !important; }
-        .cell-color { background: #ffffff; text-align: left !important; padding-left: 16px !important; border-right: 2px solid #cbd5e1 !important; }
+        .cell-color { background: #ffffff; text-align: left !important; padding-left: 14px !important; border-right: 2px solid #cbd5e1 !important; }
         .cell-n { background: #f8fafc; color: #1e40af; }
         .cell-s { background: #fffdf7; color: #b45309; }
         .merged-text { font-weight: bold; color: #111827; font-size: 15px; }
-        .merged-sub { font-weight: normal; color: #4b5563; margin-left: 8px; font-size: 14px; }
+        .merged-sub { font-weight: normal; color: #4b5563; margin-left: 6px; font-size: 14px; }
         .qty-bold { font-weight: bold; font-size: 18px; }
         .qty-empty { color: #cbd5e1; font-size: 15px; }
         .sum-row td { background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; font-size: 15px; }
@@ -126,10 +126,10 @@
                 <table class="align-table">
                     <thead>
                         <tr>
-                            <th class="th-color" style="width: 44%;">色號 / 木名</th>
-                            <th class="th-nesting" style="width: 22%;">Nesting 數量</th>
-                            <th class="th-saw" style="width: 22%;">電子鋸 數量</th>
-                            <th class="th-action" style="width: 12%;">操作</th>
+                            <th class="th-color" style="width: 34%;">色號 / 木名</th>
+                            <th class="th-nesting" style="width: 26%;">Nesting 數量</th>
+                            <th class="th-saw" style="width: 26%;">電子鋸 數量</th>
+                            <th class="th-action" style="width: 14%;">操作</th>
                         </tr>
                     </thead>
                     <tbody id="detailTableBody"></tbody>
@@ -229,7 +229,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script>
-    let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDBV9')) || {};
+    let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDBV10')) || {};
     let colorCatalog = JSON.parse(localStorage.getItem('colorCatalogDB')) || {};
     let currentOrder = null;
     let videoStream = null;
@@ -456,7 +456,7 @@
 
     function deleteColorRow(idx) { ordersDB[currentOrder].items.splice(idx, 1); saveOrders(); renderDetailTable(); }
     function deleteOrder(e, id) { e.stopPropagation(); if (confirm(`刪除訂單「${id}」？`)) { delete ordersDB[id]; saveOrders(); renderOrderList(); } }
-    function saveOrders() { localStorage.setItem('ordersMasterDBV9', JSON.stringify(ordersDB)); }
+    function saveOrders() { localStorage.setItem('ordersMasterDBV10', JSON.stringify(ordersDB)); }
 
     function renderOrderList() {
         const grid = document.getElementById('orderListGrid');
