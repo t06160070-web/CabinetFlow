@@ -13,7 +13,12 @@
         .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; color: #fff; background: #2563eb; }
         .btn-gray { background: #475569; }
         .btn-green { background: #059669; }
+        .btn-purple { background: #7c3aed; }
         .btn-red { background: #ef4444; padding: 6px 10px; font-size: 13px; }
+
+        .tabs { display: flex; gap: 10px; margin-bottom: 16px; }
+        .tab { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; background: #cbd5e1; color: #334155; }
+        .tab.active { background: #1e3a8a; color: #fff; }
 
         .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
         .order-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; cursor: pointer; }
@@ -27,65 +32,112 @@
         .sum-row td { background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; }
 
         .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); justify-content: center; align-items: center; padding: 16px; z-index: 999; }
-        .modal-card { background: #fff; width: 100%; max-width: 420px; padding: 20px; border-radius: 12px; }
-        .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; flex: 1; }
+        .modal-card { background: #fff; width: 100%; max-width: 440px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto; }
+        .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; flex: 1; position: relative; }
         label { font-size: 13px; font-weight: bold; color: #475569; }
-        input { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; width: 100%; }
+        input, textarea { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; width: 100%; }
         .row2 { display: flex; gap: 10px; }
+
+        .suggest-box { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; max-height: 180px; overflow-y: auto; z-index: 20; box-shadow: 0 6px 14px rgba(0,0,0,0.12); }
+        .suggest-item { padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; font-size: 14px; }
+        .suggest-item:hover { background: #eff6ff; }
     </style>
 </head>
 <body>
 <div class="wrap">
-    <!-- 訂單列表畫面 -->
-    <div id="listView">
-        <div class="card top-bar">
-            <h2 style="margin:0;">訂單分板管理</h2>
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button type="button" class="btn" onclick="openOrderModal()">➕ 新建訂單</button>
-                <button type="button" class="btn btn-gray" onclick="openWidthModal()">⚙️ 機台欄寬</button>
-                <button type="button" class="btn btn-green" onclick="exportAll()">匯出全部 CSV</button>
+    <div class="tabs">
+        <button type="button" id="tabOrders" class="tab active" onclick="switchTab('orders')">📋 訂單分板</button>
+        <button type="button" id="tabCatalog" class="tab" onclick="switchTab('catalog')">🎨 色號對照表</button>
+    </div>
+
+    <!-- 訂單分頁 -->
+    <div id="secOrders">
+        <div id="listView">
+            <div class="card top-bar">
+                <h2 style="margin:0;">訂單分板管理</h2>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button type="button" class="btn" onclick="openOrderModal()">➕ 新建訂單</button>
+                    <button type="button" class="btn btn-gray" onclick="openWidthModal()">⚙️ 機台欄寬</button>
+                    <button type="button" class="btn btn-green" onclick="exportAll()">匯出全部 CSV</button>
+                </div>
+            </div>
+            <div class="card">
+                <div id="orderList" class="order-grid"></div>
             </div>
         </div>
-        <div class="card">
-            <div id="orderList" class="order-grid"></div>
+
+        <div id="detailView" style="display:none;">
+            <div class="card top-bar">
+                <div>
+                    <button type="button" class="btn btn-gray" onclick="backToList()">← 返回</button>
+                    <strong id="detailTitle" style="margin-left:10px; font-size:16px; color:#1e3a8a;"></strong>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button type="button" class="btn" onclick="openItemModal()">➕ 加入色號</button>
+                    <button type="button" class="btn btn-gray" onclick="openWidthModal()">⚙️ 機台欄寬</button>
+                    <button type="button" class="btn btn-green" onclick="exportOne()">匯出此單 CSV</button>
+                </div>
+            </div>
+            <div class="card" style="padding:0; overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th id="thColor" class="col-color" style="width:32%;">色號 / 木名</th>
+                            <th id="thM1" class="th-m1" style="width:27%;">Nesting 數量</th>
+                            <th id="thM2" class="th-m2" style="width:27%;">電子鋸 數量</th>
+                            <th id="thAct" style="width:14%;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detailBody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <!-- 訂單明細畫面 -->
-    <div id="detailView" style="display:none;">
-        <div class="card top-bar">
-            <div>
-                <button type="button" class="btn btn-gray" onclick="backToList()">← 返回</button>
-                <strong id="detailTitle" style="margin-left:10px; font-size:16px; color:#1e3a8a;"></strong>
-            </div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button type="button" class="btn" onclick="openItemModal()">➕ 加入色號</button>
-                <button type="button" class="btn btn-gray" onclick="openWidthModal()">⚙️ 機台欄寬</button>
-                <button type="button" class="btn btn-green" onclick="exportOne()">匯出此單 CSV</button>
+    <!-- 色號對照表分頁 -->
+    <div id="secCatalog" style="display:none;">
+        <div class="card">
+            <h3 style="margin-top:0;">新增 / 修改 色號對照</h3>
+            <form onsubmit="saveCatalogItem(event)" class="row2" style="flex-wrap:wrap;">
+                <div class="field"><label>色號 *</label><input type="text" id="catCode" required placeholder="例: H3303"></div>
+                <div class="field"><label>木名 *</label><input type="text" id="catWood" required placeholder="例: 漢密爾頓橡木"></div>
+                <div style="display:flex; align-items:flex-end; margin-bottom:12px;">
+                    <button type="submit" class="btn">儲存</button>
+                </div>
+            </form>
+        </div>
+        <div class="card">
+            <h3 style="margin-top:0;">批次匯入（每行一筆，可用空白、逗號或 Tab 分隔）</h3>
+            <textarea id="catBatch" rows="3" placeholder="H3303 漢密爾頓橡木&#10;701 雪白"></textarea>
+            <div style="margin-top:10px; display:flex; gap:10px;">
+                <button type="button" class="btn btn-green" onclick="importCatalogBatch()">⚡ 匯入對照</button>
             </div>
         </div>
-        <div class="card" style="padding:0; overflow-x:auto;">
+        <div class="card">
+            <div class="top-bar" style="margin-bottom:12px;">
+                <h3 style="margin:0;">已建檔色號（<span id="catCount">0</span>）</h3>
+                <input type="text" id="catSearch" oninput="renderCatalog()" placeholder="搜尋色號或木名..." style="max-width:220px;">
+            </div>
             <table>
-                <thead>
-                    <tr>
-                        <th id="thColor" class="col-color" style="width:32%;">色號 / 木名</th>
-                        <th id="thM1" class="th-m1" style="width:27%;">Nesting 數量</th>
-                        <th id="thM2" class="th-m2" style="width:27%;">電子鋸 數量</th>
-                        <th id="thAct" style="width:14%;">操作</th>
-                    </tr>
-                </thead>
-                <tbody id="detailBody"></tbody>
+                <thead><tr><th class="col-color" style="width:30%;">色號</th><th class="col-color" style="width:52%;">木名</th><th style="width:18%;">操作</th></tr></thead>
+                <tbody id="catBody"></tbody>
             </table>
         </div>
     </div>
 </div>
 
-<!-- 彈窗1：新建訂單 -->
+<!-- 彈窗1：新建訂單（含相機掃描） -->
 <div id="orderModal" class="modal-bg">
     <div class="modal-card">
         <h3 style="margin-top:0;">建立新訂單</h3>
         <form onsubmit="submitOrder(event)">
-            <div class="field"><label>訂單號 *</label><input type="text" id="inOrderId" required></div>
+            <div class="field">
+                <label>訂單號 *</label>
+                <div style="display:flex; gap:8px;">
+                    <input type="text" id="inOrderId" required placeholder="輸入或掃描單號">
+                    <button type="button" class="btn btn-purple" style="white-space:nowrap;" onclick="openScan()">📷 掃描</button>
+                </div>
+            </div>
             <div class="field"><label>案名</label><input type="text" id="inProject"></div>
             <div class="field"><label>出貨日</label><input type="date" id="inDate"></div>
             <div style="display:flex; gap:10px; justify-content:flex-end;">
@@ -96,12 +148,16 @@
     </div>
 </div>
 
-<!-- 彈窗2：加入色號 -->
+<!-- 彈窗2：加入色號（含對照表自動帶出） -->
 <div id="itemModal" class="modal-bg">
     <div class="modal-card">
         <h3 style="margin-top:0;">加入板材色號</h3>
         <form onsubmit="submitItem(event)">
-            <div class="field"><label>色號 *</label><input type="text" id="inCode" required></div>
+            <div class="field">
+                <label>色號 *</label>
+                <input type="text" id="inCode" required autocomplete="off" oninput="onCodeInput()" placeholder="輸入色號或木名...">
+                <div id="suggestList" class="suggest-box"></div>
+            </div>
             <div class="field"><label>木名 *</label><input type="text" id="inWood" required></div>
             <div class="row2">
                 <div class="field"><label>Nesting 數</label><input type="number" id="inN" min="0"></div>
@@ -136,17 +192,42 @@
     </div>
 </div>
 
+<!-- 彈窗4：相機掃描 QR -->
+<div id="scanModal" class="modal-bg" style="z-index:1100;">
+    <div class="modal-card" style="text-align:center;">
+        <h3 style="margin-top:0;">掃描訂單 QR Code</h3>
+        <video id="scanVideo" autoplay playsinline style="width:100%; height:220px; background:#000; border-radius:8px; object-fit:cover;"></video>
+        <canvas id="scanCanvas" style="display:none;"></canvas>
+        <p id="scanMsg" style="font-size:13px; color:#64748b;">對準 QR Code 中...</p>
+        <button type="button" class="btn btn-gray" style="width:100%;" onclick="closeScan()">關閉相機</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script>
     let db = JSON.parse(localStorage.getItem('simpleBoardDB')) || {};
+    let catalog = JSON.parse(localStorage.getItem('simpleCatalogDB')) || {};
     let widths = JSON.parse(localStorage.getItem('simpleBoardWidths')) || { color: 32, m1: 27, m2: 27, act: 14 };
     let curId = null;
+    let streamRef = null;
+    let scanning = false;
 
     applyWidths();
     renderOrders();
 
     function saveAll() {
         localStorage.setItem('simpleBoardDB', JSON.stringify(db));
+        localStorage.setItem('simpleCatalogDB', JSON.stringify(catalog));
         localStorage.setItem('simpleBoardWidths', JSON.stringify(widths));
+    }
+
+    function switchTab(tab) {
+        document.getElementById('secOrders').style.display = tab === 'orders' ? 'block' : 'none';
+        document.getElementById('secCatalog').style.display = tab === 'catalog' ? 'block' : 'none';
+        document.getElementById('tabOrders').classList.toggle('active', tab === 'orders');
+        document.getElementById('tabCatalog').classList.toggle('active', tab === 'catalog');
+        if (tab === 'catalog') renderCatalog();
+        if (tab === 'orders' && !curId) renderOrders();
     }
 
     function applyWidths() {
@@ -160,7 +241,7 @@
     function closeOrderModal() { document.getElementById('orderModal').style.display = 'none'; document.getElementById('inOrderId').value = ''; document.getElementById('inProject').value = ''; document.getElementById('inDate').value = ''; }
 
     function openItemModal() { document.getElementById('itemModal').style.display = 'flex'; document.getElementById('inCode').focus(); }
-    function closeItemModal() { document.getElementById('itemModal').style.display = 'none'; document.getElementById('inCode').value = ''; document.getElementById('inWood').value = ''; document.getElementById('inN').value = ''; document.getElementById('inS').value = ''; }
+    function closeItemModal() { document.getElementById('itemModal').style.display = 'none'; document.getElementById('suggestList').style.display = 'none'; document.getElementById('inCode').value = ''; document.getElementById('inWood').value = ''; document.getElementById('inN').value = ''; document.getElementById('inS').value = ''; }
 
     function openWidthModal() {
         document.getElementById('wColor').value = widths.color;
@@ -194,6 +275,27 @@
         openDetail(id);
     }
 
+    function onCodeInput() {
+        const kw = document.getElementById('inCode').value.trim().toLowerCase();
+        const box = document.getElementById('suggestList');
+        const exact = Object.keys(catalog).find(k => k.toLowerCase() === kw);
+        if (exact) document.getElementById('inWood').value = catalog[exact];
+
+        if (!kw) { box.style.display = 'none'; return; }
+        const list = Object.entries(catalog).filter(([c, w]) => c.toLowerCase().includes(kw) || w.toLowerCase().includes(kw));
+        if (!list.length) { box.style.display = 'none'; return; }
+
+        box.innerHTML = list.map(([c, w]) => `<div class="suggest-item" onclick="pickSuggest('${c.replace(/'/g, "\\'")}', '${w.replace(/'/g, "\\'")}')"><strong>${c}</strong><span style="color:#64748b;">${w}</span></div>`).join('');
+        box.style.display = 'block';
+    }
+
+    function pickSuggest(c, w) {
+        document.getElementById('inCode').value = c;
+        document.getElementById('inWood').value = w;
+        document.getElementById('suggestList').style.display = 'none';
+        document.getElementById('inN').focus();
+    }
+
     function submitItem(e) {
         e.preventDefault();
         if (!curId) return;
@@ -202,6 +304,7 @@
         const n = Number(document.getElementById('inN').value) || 0;
         const s = Number(document.getElementById('inS').value) || 0;
         if (!code || !wood || (n === 0 && s === 0)) return alert('請填色號、木名與至少一邊數量');
+        if (!catalog[code]) catalog[code] = wood;
         db[curId].items.push({ code, wood, n, s });
         saveAll();
         renderDetail();
@@ -254,6 +357,99 @@
                 <td><button type="button" class="btn btn-red" onclick="delItem(${i})">刪除</button></td>
             </tr>`;
         }).join('') + `<tr class="sum-row"><td class="col-color">合計</td><td>${nSum} 片</td><td>${sSum} 片</td><td></td></tr>`;
+    }
+
+    function saveCatalogItem(e) {
+        e.preventDefault();
+        const c = document.getElementById('catCode').value.trim();
+        const w = document.getElementById('catWood').value.trim();
+        if (!c || !w) return;
+        catalog[c] = w;
+        saveAll();
+        document.getElementById('catCode').value = '';
+        document.getElementById('catWood').value = '';
+        renderCatalog();
+    }
+
+    function importCatalogBatch() {
+        const lines = document.getElementById('catBatch').value.trim().split(/\r?\n/);
+        let n = 0;
+        lines.forEach(line => {
+            const m = line.trim().match(/^([^\t,，\s]+)[\t,，\s]+(.+)$/);
+            if (m) { catalog[m[1].trim()] = m[2].trim(); n++; }
+        });
+        if (!n) return alert('沒有可匯入的資料');
+        saveAll();
+        document.getElementById('catBatch').value = '';
+        renderCatalog();
+        alert(`已匯入 ${n} 筆`);
+    }
+
+    function delCatalog(c) {
+        delete catalog[c];
+        saveAll();
+        renderCatalog();
+    }
+
+    function renderCatalog() {
+        const kw = document.getElementById('catSearch').value.trim().toLowerCase();
+        const entries = Object.entries(catalog).filter(([c, w]) => c.toLowerCase().includes(kw) || w.toLowerCase().includes(kw));
+        document.getElementById('catCount').textContent = Object.keys(catalog).length;
+        document.getElementById('catBody').innerHTML = entries.length ? entries.map(([c, w]) => `
+            <tr>
+                <td class="col-color"><strong>${c}</strong></td>
+                <td class="col-color">${w}</td>
+                <td><button type="button" class="btn btn-red" onclick="delCatalog('${c.replace(/'/g, "\\'")}')">刪除</button></td>
+            </tr>
+        `).join('') : '<tr><td colspan="3" style="color:#94a3b8;">尚無色號對照</td></tr>';
+    }
+
+    function openScan() {
+        if (typeof jsQR === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            return alert('目前環境不支援相機掃描（需 HTTPS 或支援鏡頭的裝置）');
+        }
+        document.getElementById('scanModal').style.display = 'flex';
+        document.getElementById('scanMsg').textContent = '啟動鏡頭中...';
+        scanning = true;
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(stream => {
+                streamRef = stream;
+                const vid = document.getElementById('scanVideo');
+                vid.srcObject = stream;
+                vid.play();
+                document.getElementById('scanMsg').textContent = '請對準 QR Code';
+                requestAnimationFrame(loopScan);
+            })
+            .catch(() => {
+                alert('無法開啟相機，請檢查權限');
+                closeScan();
+            });
+    }
+
+    function loopScan() {
+        if (!scanning) return;
+        const vid = document.getElementById('scanVideo');
+        if (vid.readyState === vid.HAVE_ENOUGH_DATA) {
+            const can = document.getElementById('scanCanvas');
+            const ctx = can.getContext('2d');
+            can.width = vid.videoWidth;
+            can.height = vid.videoHeight;
+            ctx.drawImage(vid, 0, 0, can.width, can.height);
+            const img = ctx.getImageData(0, 0, can.width, can.height);
+            const res = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+            if (res && res.data && res.data.trim()) {
+                document.getElementById('inOrderId').value = res.data.trim();
+                closeScan();
+                return;
+            }
+        }
+        if (scanning) requestAnimationFrame(loopScan);
+    }
+
+    function closeScan() {
+        scanning = false;
+        if (streamRef) { streamRef.getTracks().forEach(t => t.stop()); streamRef = null; }
+        document.getElementById('scanModal').style.display = 'none';
     }
 
     function dl(csv, name) {
