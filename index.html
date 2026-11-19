@@ -38,10 +38,15 @@
 
         .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); justify-content: center; align-items: center; padding: 16px; z-index: 999; }
         .modal-card { background: #fff; width: 100%; max-width: 440px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto; }
-        .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; flex: 1; }
+        .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; flex: 1; position: relative; }
         label { font-size: 13px; font-weight: bold; color: #475569; }
-        input, select, textarea { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; width: 100%; background: #fff; }
+        input, textarea { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; width: 100%; background: #fff; }
         .row2 { display: flex; gap: 10px; }
+
+        /* 打字時才出現的預設／已建檔清單 */
+        .type-list { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; max-height: 180px; overflow-y: auto; z-index: 30; box-shadow: 0 6px 14px rgba(0,0,0,0.12); }
+        .type-item { padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; font-size: 14px; }
+        .type-item:hover { background: #eff6ff; }
     </style>
 </head>
 <body>
@@ -140,10 +145,6 @@
         </div>
         <div class="field"><label>案名</label><input type="text" id="inProject"></div>
         <div class="field"><label>出貨日期</label><input type="date" id="inDate"></div>
-        <div class="field">
-            <label>複製既有訂單清單（選填）</label>
-            <select id="inCopyFrom"><option value="">-- 不複製，建立空白訂單 --</option></select>
-        </div>
         <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
             <button type="button" class="btn btn-gray" onclick="closeOrderModal()">取消</button>
             <button type="button" class="btn" onclick="submitOrder()">確定建立</button>
@@ -156,12 +157,9 @@
     <div class="modal-card">
         <h3 style="margin-top:0;">加入板材色號</h3>
         <div class="field">
-            <label>預設 / 已建檔色號清單（點選可快速帶入）</label>
-            <select id="presetColorSelect" onchange="applyPresetColor()"></select>
-        </div>
-        <div class="field">
             <label>色號 *</label>
-            <input type="text" id="inCode" oninput="matchCatalogByCode()" placeholder="例: H3303">
+            <input type="text" id="inCode" autocomplete="off" oninput="onTypeColor()" placeholder="打字搜尋預設 / 已建檔色號...">
+            <div id="typeColorList" class="type-list"></div>
         </div>
         <div class="field">
             <label>木名 *</label>
@@ -251,10 +249,6 @@
     }
 
     function openOrderModal() {
-        const sel = document.getElementById('inCopyFrom');
-        const ids = Object.keys(db).reverse();
-        sel.innerHTML = '<option value="">-- 不複製，建立空白訂單 --</option>' +
-            ids.map(id => `<option value="${id}">${id}（${db[id].project || '未命名'}・${(db[id].items || []).length}項）</option>`).join('');
         document.getElementById('orderModal').style.display = 'flex';
         document.getElementById('inOrderId').focus();
     }
@@ -265,58 +259,66 @@
         document.getElementById('inOrderId').value = '';
         document.getElementById('inProject').value = '';
         document.getElementById('inDate').value = '';
-        document.getElementById('inCopyFrom').value = '';
     }
 
     function submitOrder() {
         const id = document.getElementById('inOrderId').value.trim();
         if (!id) return alert('請輸入訂單號');
-        const copyFrom = document.getElementById('inCopyFrom').value;
-        const copiedItems = (copyFrom && db[copyFrom] && Array.isArray(db[copyFrom].items))
-            ? db[copyFrom].items.map(it => ({ code: it.code, wood: it.wood, n: it.n, s: it.s }))
-            : [];
-
-        db[id] = {
-            project: document.getElementById('inProject').value.trim(),
-            date: document.getElementById('inDate').value,
-            items: copiedItems
-        };
+        if (!db[id]) {
+            db[id] = {
+                project: document.getElementById('inProject').value.trim(),
+                date: document.getElementById('inDate').value,
+                items: []
+            };
+        } else {
+            db[id].project = document.getElementById('inProject').value.trim();
+            db[id].date = document.getElementById('inDate').value;
+        }
         saveAll();
         closeOrderModal();
         openDetail(id);
     }
 
     function openItemModal() {
-        const sel = document.getElementById('presetColorSelect');
-        const entries = Object.entries(catalog);
-        sel.innerHTML = '<option value="">-- 選擇預設 / 已建檔色號 --</option>' +
-            entries.map(([c, w]) => `<option value="${c}">${c}｜${w}</option>`).join('');
         document.getElementById('itemModal').style.display = 'flex';
+        document.getElementById('typeColorList').style.display = 'none';
         document.getElementById('inCode').focus();
     }
 
     function closeItemModal() {
         document.getElementById('itemModal').style.display = 'none';
-        document.getElementById('presetColorSelect').value = '';
+        document.getElementById('typeColorList').style.display = 'none';
         document.getElementById('inCode').value = '';
         document.getElementById('inWood').value = '';
         document.getElementById('inN').value = '';
         document.getElementById('inS').value = '';
     }
 
-    function applyPresetColor() {
-        const c = document.getElementById('presetColorSelect').value;
-        if (!c) return;
-        document.getElementById('inCode').value = c;
-        document.getElementById('inWood').value = catalog[c] || '';
-        document.getElementById('inN').focus();
+    function onTypeColor() {
+        const kw = document.getElementById('inCode').value.trim().toLowerCase();
+        const box = document.getElementById('typeColorList');
+        if (!kw) {
+            box.style.display = 'none';
+            return;
+        }
+        const matches = Object.entries(catalog).filter(([c, w]) =>
+            c.toLowerCase().includes(kw) || w.toLowerCase().includes(kw)
+        );
+        if (!matches.length) {
+            box.style.display = 'none';
+            return;
+        }
+        box.innerHTML = matches.map(([c, w]) =>
+            `<div class="type-item" onclick="pickTypeColor('${c.replace(/'/g, "\\'")}', '${w.replace(/'/g, "\\'")}')"><strong>${c}</strong><span style="color:#64748b;">${w}</span></div>`
+        ).join('');
+        box.style.display = 'block';
     }
 
-    function matchCatalogByCode() {
-        const code = document.getElementById('inCode').value.trim();
-        if (catalog[code] && !document.getElementById('inWood').value.trim()) {
-            document.getElementById('inWood').value = catalog[code];
-        }
+    function pickTypeColor(c, w) {
+        document.getElementById('inCode').value = c;
+        document.getElementById('inWood').value = w;
+        document.getElementById('typeColorList').style.display = 'none';
+        document.getElementById('inN').focus();
     }
 
     function submitItem() {
