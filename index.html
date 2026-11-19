@@ -33,20 +33,15 @@
         th.th-m2 { background: #fef3c7; color: #92400e; }
         .sum-row td { background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; }
 
-        /* 色號在上、木名在下一行且字級更小 */
         .code-line { display: block; font-size: 14px; font-weight: bold; color: #111827; line-height: 1.3; }
         .wood-subline { display: block; font-size: 11.5px; font-weight: normal; color: #64748b; line-height: 1.35; margin-top: 2px; }
 
         .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); justify-content: center; align-items: center; padding: 16px; z-index: 999; }
         .modal-card { background: #fff; width: 100%; max-width: 440px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto; }
-        .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; flex: 1; position: relative; }
+        .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; flex: 1; }
         label { font-size: 13px; font-weight: bold; color: #475569; }
-        input, textarea { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; width: 100%; }
+        input, select, textarea { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; width: 100%; background: #fff; }
         .row2 { display: flex; gap: 10px; }
-
-        .suggest-box { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; max-height: 180px; overflow-y: auto; z-index: 20; box-shadow: 0 6px 14px rgba(0,0,0,0.12); }
-        .suggest-item { padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; font-size: 14px; }
-        .suggest-item:hover { background: #eff6ff; }
     </style>
 </head>
 <body>
@@ -104,13 +99,13 @@
     <div id="secCatalog" style="display:none;">
         <div class="card">
             <h3 style="margin-top:0;">新增 / 修改 色號對照</h3>
-            <form onsubmit="saveCatalogItem(event)" class="row2" style="flex-wrap:wrap;">
-                <div class="field"><label>色號 *</label><input type="text" id="catCode" required placeholder="例: H3303"></div>
-                <div class="field"><label>木名 *</label><input type="text" id="catWood" required placeholder="例: 漢密爾頓橡木"></div>
+            <div class="row2" style="flex-wrap:wrap;">
+                <div class="field"><label>色號 *</label><input type="text" id="catCode" placeholder="例: H3303"></div>
+                <div class="field"><label>木名 *</label><input type="text" id="catWood" placeholder="例: 漢密爾頓橡木"></div>
                 <div style="display:flex; align-items:flex-end; margin-bottom:12px;">
-                    <button type="submit" class="btn">儲存</button>
+                    <button type="button" class="btn" onclick="saveCatalogItem()">儲存</button>
                 </div>
-            </form>
+            </div>
         </div>
         <div class="card">
             <h3 style="margin-top:0;">批次匯入（每行一筆，可用空白、逗號或 Tab 分隔）</h3>
@@ -136,21 +131,23 @@
 <div id="orderModal" class="modal-bg">
     <div class="modal-card">
         <h3 style="margin-top:0;">建立新訂單</h3>
-        <form onsubmit="submitOrder(event)">
-            <div class="field">
-                <label>訂單號 *</label>
-                <div style="display:flex; gap:8px;">
-                    <input type="text" id="inOrderId" required placeholder="輸入或掃描單號">
-                    <button type="button" class="btn btn-purple" style="white-space:nowrap;" onclick="openCamModal()">📷 掃描</button>
-                </div>
+        <div class="field">
+            <label>訂單號 *</label>
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="inOrderId" placeholder="輸入或掃描單號">
+                <button type="button" class="btn btn-purple" style="white-space:nowrap;" onclick="openCamModal()">📷 掃描</button>
             </div>
-            <div class="field"><label>案名</label><input type="text" id="inProject"></div>
-            <div class="field"><label>出貨日期</label><input type="date" id="inDate"></div>
-            <div style="display:flex; gap:10px; justify-content:flex-end;">
-                <button type="button" class="btn btn-gray" onclick="closeOrderModal()">取消</button>
-                <button type="submit" class="btn">確定建立</button>
-            </div>
-        </form>
+        </div>
+        <div class="field"><label>案名</label><input type="text" id="inProject"></div>
+        <div class="field"><label>出貨日期</label><input type="date" id="inDate"></div>
+        <div class="field">
+            <label>複製既有訂單清單（選填）</label>
+            <select id="inCopyFrom"><option value="">-- 不複製，建立空白訂單 --</option></select>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+            <button type="button" class="btn btn-gray" onclick="closeOrderModal()">取消</button>
+            <button type="button" class="btn" onclick="submitOrder()">確定建立</button>
+        </div>
     </div>
 </div>
 
@@ -158,22 +155,26 @@
 <div id="itemModal" class="modal-bg">
     <div class="modal-card">
         <h3 style="margin-top:0;">加入板材色號</h3>
-        <form onsubmit="submitItem(event)">
-            <div class="field">
-                <label>色號 *</label>
-                <input type="text" id="inCode" required autocomplete="off" oninput="onCodeInput()" placeholder="輸入色號或木名...">
-                <div id="suggestList" class="suggest-box"></div>
-            </div>
-            <div class="field"><label>木名 *</label><input type="text" id="inWood" required></div>
-            <div class="row2">
-                <div class="field"><label>Nesting 數</label><input type="number" id="inN" min="0"></div>
-                <div class="field"><label>電子鋸 數</label><input type="number" id="inS" min="0"></div>
-            </div>
-            <div style="display:flex; gap:10px; justify-content:flex-end;">
-                <button type="button" class="btn btn-gray" onclick="closeItemModal()">取消</button>
-                <button type="submit" class="btn">確認加入</button>
-            </div>
-        </form>
+        <div class="field">
+            <label>預設 / 已建檔色號清單（點選可快速帶入）</label>
+            <select id="presetColorSelect" onchange="applyPresetColor()"></select>
+        </div>
+        <div class="field">
+            <label>色號 *</label>
+            <input type="text" id="inCode" oninput="matchCatalogByCode()" placeholder="例: H3303">
+        </div>
+        <div class="field">
+            <label>木名 *</label>
+            <input type="text" id="inWood" placeholder="例: 漢密爾頓橡木">
+        </div>
+        <div class="row2">
+            <div class="field"><label>Nesting 數</label><input type="number" id="inN" min="0"></div>
+            <div class="field"><label>電子鋸 數</label><input type="number" id="inS" min="0"></div>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+            <button type="button" class="btn btn-gray" onclick="closeItemModal()">取消</button>
+            <button type="button" class="btn" onclick="submitItem()">確認加入</button>
+        </div>
     </div>
 </div>
 
@@ -181,20 +182,18 @@
 <div id="widthModal" class="modal-bg">
     <div class="modal-card">
         <h3 style="margin-top:0;">微調機台欄寬 (%)</h3>
-        <form onsubmit="submitWidths(event)">
-            <div class="row2">
-                <div class="field"><label>色號/木名 (%)</label><input type="number" id="wColor" min="15" max="60" required></div>
-                <div class="field"><label>操作欄 (%)</label><input type="number" id="wAct" min="8" max="30" required></div>
-            </div>
-            <div class="row2">
-                <div class="field"><label>Nesting (%)</label><input type="number" id="wM1" min="10" max="60" required></div>
-                <div class="field"><label>電子鋸 (%)</label><input type="number" id="wM2" min="10" max="60" required></div>
-            </div>
-            <div style="display:flex; gap:10px; justify-content:flex-end;">
-                <button type="button" class="btn btn-gray" onclick="closeWidthModal()">取消</button>
-                <button type="submit" class="btn">套用</button>
-            </div>
-        </form>
+        <div class="row2">
+            <div class="field"><label>色號/木名 (%)</label><input type="number" id="wColor" min="15" max="60"></div>
+            <div class="field"><label>操作欄 (%)</label><input type="number" id="wAct" min="8" max="30"></div>
+        </div>
+        <div class="row2">
+            <div class="field"><label>Nesting (%)</label><input type="number" id="wM1" min="10" max="60"></div>
+            <div class="field"><label>電子鋸 (%)</label><input type="number" id="wM2" min="10" max="60"></div>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+            <button type="button" class="btn btn-gray" onclick="closeWidthModal()">取消</button>
+            <button type="button" class="btn" onclick="submitWidths()">套用</button>
+        </div>
     </div>
 </div>
 
@@ -210,29 +209,29 @@
 </div>
 
 <script>
-    window.onerror = function() { return true; };
+    const DEFAULT_CATALOG = {
+        'H3303': '漢密爾頓橡木',
+        '701': '雪白',
+        'U999': '炭黑',
+        'H1145': '巴登白橡',
+        'W1000': '尊貴白'
+    };
 
-    let db = {};
-    let catalog = {};
-    let widths = { color: 32, m1: 27, m2: 27, act: 14 };
+    let db = JSON.parse(localStorage.getItem('boardSystemDB_v2') || 'null') || {};
+    let catalog = JSON.parse(localStorage.getItem('boardSystemCatalog_v2') || 'null');
+    if (!catalog || Object.keys(catalog).length === 0) {
+        catalog = Object.assign({}, DEFAULT_CATALOG);
+    }
+    let widths = JSON.parse(localStorage.getItem('boardSystemWidths_v2') || 'null') || { color: 32, m1: 27, m2: 27, act: 14 };
     let curId = null;
-
-    try { db = JSON.parse(localStorage.getItem('boardSystemDB_v1')) || {}; } catch (e) {}
-    try { catalog = JSON.parse(localStorage.getItem('boardSystemCatalog_v1')) || {}; } catch (e) {}
-    try {
-        const savedW = JSON.parse(localStorage.getItem('boardSystemWidths_v1'));
-        if (savedW) widths = Object.assign(widths, savedW);
-    } catch (e) {}
 
     applyWidths();
     renderOrders();
 
     function saveAll() {
-        try {
-            localStorage.setItem('boardSystemDB_v1', JSON.stringify(db));
-            localStorage.setItem('boardSystemCatalog_v1', JSON.stringify(catalog));
-            localStorage.setItem('boardSystemWidths_v1', JSON.stringify(widths));
-        } catch (e) {}
+        localStorage.setItem('boardSystemDB_v2', JSON.stringify(db));
+        localStorage.setItem('boardSystemCatalog_v2', JSON.stringify(catalog));
+        localStorage.setItem('boardSystemWidths_v2', JSON.stringify(widths));
     }
 
     function switchTab(tab) {
@@ -251,11 +250,88 @@
         document.getElementById('thAct').style.width = widths.act + '%';
     }
 
-    function openOrderModal() { document.getElementById('orderModal').style.display = 'flex'; document.getElementById('inOrderId').focus(); }
-    function closeOrderModal() { closeCamModal(); document.getElementById('orderModal').style.display = 'none'; document.getElementById('inOrderId').value = ''; document.getElementById('inProject').value = ''; document.getElementById('inDate').value = ''; }
+    function openOrderModal() {
+        const sel = document.getElementById('inCopyFrom');
+        const ids = Object.keys(db).reverse();
+        sel.innerHTML = '<option value="">-- 不複製，建立空白訂單 --</option>' +
+            ids.map(id => `<option value="${id}">${id}（${db[id].project || '未命名'}・${(db[id].items || []).length}項）</option>`).join('');
+        document.getElementById('orderModal').style.display = 'flex';
+        document.getElementById('inOrderId').focus();
+    }
 
-    function openItemModal() { document.getElementById('itemModal').style.display = 'flex'; document.getElementById('inCode').focus(); }
-    function closeItemModal() { document.getElementById('itemModal').style.display = 'none'; document.getElementById('suggestList').style.display = 'none'; document.getElementById('inCode').value = ''; document.getElementById('inWood').value = ''; document.getElementById('inN').value = ''; document.getElementById('inS').value = ''; }
+    function closeOrderModal() {
+        closeCamModal();
+        document.getElementById('orderModal').style.display = 'none';
+        document.getElementById('inOrderId').value = '';
+        document.getElementById('inProject').value = '';
+        document.getElementById('inDate').value = '';
+        document.getElementById('inCopyFrom').value = '';
+    }
+
+    function submitOrder() {
+        const id = document.getElementById('inOrderId').value.trim();
+        if (!id) return alert('請輸入訂單號');
+        const copyFrom = document.getElementById('inCopyFrom').value;
+        const copiedItems = (copyFrom && db[copyFrom] && Array.isArray(db[copyFrom].items))
+            ? db[copyFrom].items.map(it => ({ code: it.code, wood: it.wood, n: it.n, s: it.s }))
+            : [];
+
+        db[id] = {
+            project: document.getElementById('inProject').value.trim(),
+            date: document.getElementById('inDate').value,
+            items: copiedItems
+        };
+        saveAll();
+        closeOrderModal();
+        openDetail(id);
+    }
+
+    function openItemModal() {
+        const sel = document.getElementById('presetColorSelect');
+        const entries = Object.entries(catalog);
+        sel.innerHTML = '<option value="">-- 選擇預設 / 已建檔色號 --</option>' +
+            entries.map(([c, w]) => `<option value="${c}">${c}｜${w}</option>`).join('');
+        document.getElementById('itemModal').style.display = 'flex';
+        document.getElementById('inCode').focus();
+    }
+
+    function closeItemModal() {
+        document.getElementById('itemModal').style.display = 'none';
+        document.getElementById('presetColorSelect').value = '';
+        document.getElementById('inCode').value = '';
+        document.getElementById('inWood').value = '';
+        document.getElementById('inN').value = '';
+        document.getElementById('inS').value = '';
+    }
+
+    function applyPresetColor() {
+        const c = document.getElementById('presetColorSelect').value;
+        if (!c) return;
+        document.getElementById('inCode').value = c;
+        document.getElementById('inWood').value = catalog[c] || '';
+        document.getElementById('inN').focus();
+    }
+
+    function matchCatalogByCode() {
+        const code = document.getElementById('inCode').value.trim();
+        if (catalog[code] && !document.getElementById('inWood').value.trim()) {
+            document.getElementById('inWood').value = catalog[code];
+        }
+    }
+
+    function submitItem() {
+        if (!curId) return;
+        const code = document.getElementById('inCode').value.trim();
+        const wood = document.getElementById('inWood').value.trim();
+        const n = Number(document.getElementById('inN').value) || 0;
+        const s = Number(document.getElementById('inS').value) || 0;
+        if (!code || !wood || (n === 0 && s === 0)) return alert('請填色號、木名與至少一邊數量');
+        catalog[code] = wood;
+        db[curId].items.push({ code, wood, n, s });
+        saveAll();
+        renderDetail();
+        closeItemModal();
+    }
 
     function openWidthModal() {
         document.getElementById('wColor').value = widths.color;
@@ -264,10 +340,12 @@
         document.getElementById('wAct').value = widths.act;
         document.getElementById('widthModal').style.display = 'flex';
     }
-    function closeWidthModal() { document.getElementById('widthModal').style.display = 'none'; }
 
-    function submitWidths(e) {
-        e.preventDefault();
+    function closeWidthModal() {
+        document.getElementById('widthModal').style.display = 'none';
+    }
+
+    function submitWidths() {
         widths = {
             color: Number(document.getElementById('wColor').value) || 32,
             m1: Number(document.getElementById('wM1').value) || 27,
@@ -277,56 +355,6 @@
         applyWidths();
         saveAll();
         closeWidthModal();
-    }
-
-    function submitOrder(e) {
-        e.preventDefault();
-        const id = document.getElementById('inOrderId').value.trim();
-        if (!id) return;
-        if (!db[id]) db[id] = { project: document.getElementById('inProject').value.trim(), date: document.getElementById('inDate').value, items: [] };
-        else {
-            db[id].project = document.getElementById('inProject').value.trim();
-            db[id].date = document.getElementById('inDate').value;
-        }
-        saveAll();
-        closeOrderModal();
-        openDetail(id);
-    }
-
-    function onCodeInput() {
-        const kw = document.getElementById('inCode').value.trim().toLowerCase();
-        const box = document.getElementById('suggestList');
-        const exact = Object.keys(catalog).find(k => k.toLowerCase() === kw);
-        if (exact) document.getElementById('inWood').value = catalog[exact];
-
-        if (!kw) { box.style.display = 'none'; return; }
-        const list = Object.entries(catalog).filter(([c, w]) => c.toLowerCase().includes(kw) || w.toLowerCase().includes(kw));
-        if (!list.length) { box.style.display = 'none'; return; }
-
-        box.innerHTML = list.map(([c, w]) => `<div class="suggest-item" onclick="pickSuggest('${c.replace(/'/g, "\\'")}', '${w.replace(/'/g, "\\'")}')"><strong>${c}</strong><span style="color:#64748b;">${w}</span></div>`).join('');
-        box.style.display = 'block';
-    }
-
-    function pickSuggest(c, w) {
-        document.getElementById('inCode').value = c;
-        document.getElementById('inWood').value = w;
-        document.getElementById('suggestList').style.display = 'none';
-        document.getElementById('inN').focus();
-    }
-
-    function submitItem(e) {
-        e.preventDefault();
-        if (!curId) return;
-        const code = document.getElementById('inCode').value.trim();
-        const wood = document.getElementById('inWood').value.trim();
-        const n = Number(document.getElementById('inN').value) || 0;
-        const s = Number(document.getElementById('inS').value) || 0;
-        if (!code || !wood || (n === 0 && s === 0)) return alert('請填色號、木名與至少一邊數量');
-        if (!catalog[code]) catalog[code] = wood;
-        db[curId].items.push({ code, wood, n, s });
-        saveAll();
-        renderDetail();
-        closeItemModal();
     }
 
     function openDetail(id) {
@@ -389,11 +417,10 @@
         }).join('') + `<tr class="sum-row"><td class="col-color">合計</td><td>${nSum} 片</td><td>${sSum} 片</td><td></td></tr>`;
     }
 
-    function saveCatalogItem(e) {
-        e.preventDefault();
+    function saveCatalogItem() {
         const c = document.getElementById('catCode').value.trim();
         const w = document.getElementById('catWood').value.trim();
-        if (!c || !w) return;
+        if (!c || !w) return alert('請填寫色號與木名');
         catalog[c] = w;
         saveAll();
         document.getElementById('catCode').value = '';
@@ -465,13 +492,10 @@
 <script>
     let camStream = null;
     let camActive = false;
-    let jsQRReady = false;
 
     (function loadJsQR() {
         const s = document.createElement('script');
         s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
-        s.onload = () => { jsQRReady = typeof window.jsQR === 'function'; };
-        s.onerror = () => { jsQRReady = false; };
         document.body.appendChild(s);
     })();
 
@@ -489,7 +513,7 @@
                 const video = document.getElementById('camVideo');
                 video.srcObject = stream;
                 video.play();
-                document.getElementById('camStatus').textContent = jsQRReady ? '請對準 QR Code' : '鏡頭已開啟（辨識模組載入中）';
+                document.getElementById('camStatus').textContent = '請對準 QR Code';
                 requestAnimationFrame(scanFrame);
             })
             .catch(() => {
@@ -508,4 +532,26 @@
             canvas.height = video.videoHeight;
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const code = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dont
+            const code = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+            if (code && code.data && code.data.trim()) {
+                document.getElementById('inOrderId').value = code.data.trim();
+                closeCamModal();
+                return;
+            }
+        }
+        if (camActive) requestAnimationFrame(scanFrame);
+    }
+
+    function closeCamModal() {
+        camActive = false;
+        if (camStream) {
+            camStream.getTracks().forEach(t => t.stop());
+            camStream = null;
+        }
+        const video = document.getElementById('camVideo');
+        if (video) video.srcObject = null;
+        document.getElementById('camModal').style.display = 'none';
+    }
+</script>
+</body>
+</html>
