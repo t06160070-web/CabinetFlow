@@ -41,27 +41,28 @@
         .autocomplete-item { padding: 11px 14px; font-size: 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; }
         .autocomplete-item:hover { background: #eff6ff; color: #1d4ed8; }
 
-        /* 統一雙欄大表格（桌機、平板、手機皆維持同一種版面） */
+        /* 左側色號/木名 + 右側工段數量表格 */
         .table-wrap { padding: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        table.align-table { width: 100%; min-width: 560px; border-collapse: collapse; table-layout: fixed; }
+        table.align-table { width: 100%; min-width: 520px; border-collapse: collapse; table-layout: fixed; }
         .align-table th, .align-table td { padding: 14px 10px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 15px; word-break: break-word; }
-        .th-nesting { background: #dbeafe; color: #1e40af; font-size: 16px; border-right: 2px solid #94a3b8; }
-        .th-saw { background: #fef3c7; color: #92400e; font-size: 16px; }
-        .sub-nesting { background: #eff6ff; color: #1e3a8a; font-size: 13px; }
-        .sub-saw { background: #fffbeb; color: #78350f; font-size: 13px; }
+        .th-color { background: #f1f5f9; color: #0f172a; font-size: 15px; border-right: 2px solid #cbd5e1; text-align: left; padding-left: 16px !important; }
+        .th-nesting { background: #dbeafe; color: #1e40af; font-size: 15px; border-right: 2px solid #94a3b8; }
+        .th-saw { background: #fef3c7; color: #92400e; font-size: 15px; border-right: 2px solid #94a3b8; }
+        .th-action { background: #f1f5f9; color: #334155; font-size: 13px; }
         .divider { border-right: 2px solid #94a3b8 !important; }
-        .cell-n { background: #f8fafc; }
-        .cell-s { background: #fffdf7; }
+        .cell-color { background: #ffffff; text-align: left !important; padding-left: 16px !important; border-right: 2px solid #cbd5e1 !important; }
+        .cell-n { background: #f8fafc; color: #1e40af; }
+        .cell-s { background: #fffdf7; color: #b45309; }
         .merged-text { font-weight: bold; color: #111827; font-size: 15px; }
-        .merged-sub { font-weight: normal; color: #4b5563; margin-left: 6px; }
-        .qty-bold { font-weight: bold; font-size: 18px; color: #0f172a; }
+        .merged-sub { font-weight: normal; color: #4b5563; margin-left: 8px; font-size: 14px; }
+        .qty-bold { font-weight: bold; font-size: 18px; }
+        .qty-empty { color: #cbd5e1; font-size: 15px; }
         .sum-row td { background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; font-size: 15px; }
 
         table.catalog-table { width: 100%; border-collapse: collapse; }
         .catalog-table th, .catalog-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 15px; }
         .catalog-table th { background: #f8fafc; color: #334155; }
 
-        /* 通用彈窗樣式 (Modal) */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 1000; justify-content: center; align-items: center; padding: 15px; }
         .modal-card { background: #fff; width: 100%; max-width: 450px; border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; max-height: 90vh; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
@@ -74,6 +75,7 @@
             .card { padding: 16px; }
             .tab-btn { padding: 12px 10px; font-size: 14px; }
             .align-table th, .align-table td { padding: 10px 6px; font-size: 13px; }
+            .th-color, .cell-color { padding-left: 10px !important; }
             .merged-text { font-size: 13px; }
             .merged-sub { display: block; margin-left: 0; font-size: 12px; }
             .qty-bold { font-size: 15px; }
@@ -119,12 +121,16 @@
                 </div>
             </div>
 
-            <!-- 雙欄大表格（桌機、平板、手機統一使用） -->
+            <!-- 左側色號/木名 + 右側 Nesting / 電子鋸數量 -->
             <div class="card table-wrap">
                 <table class="align-table">
                     <thead>
-                        <tr><th colspan="2" class="th-nesting">Nesting</th><th colspan="2" class="th-saw">電子鋸</th><th rowspan="2" style="width: 72px; background:#f1f5f9; font-size:13px;">操作</th></tr>
-                        <tr><th class="sub-nesting" style="width: 32%;">色號 / 木名</th><th class="sub-nesting divider" style="width: 14%;">數量</th><th class="sub-saw" style="width: 32%;">色號 / 木名</th><th class="sub-saw" style="width: 14%;">數量</th></tr>
+                        <tr>
+                            <th class="th-color" style="width: 44%;">色號 / 木名</th>
+                            <th class="th-nesting" style="width: 22%;">Nesting 數量</th>
+                            <th class="th-saw" style="width: 22%;">電子鋸 數量</th>
+                            <th class="th-action" style="width: 12%;">操作</th>
+                        </tr>
                     </thead>
                     <tbody id="detailTableBody"></tbody>
                 </table>
@@ -162,7 +168,7 @@
     </div>
 </div>
 
-<!-- 📦 彈窗 A：建立訂單 Modal (內建相機掃描單號) -->
+<!-- 彈窗 A：建立訂單 Modal -->
 <div id="orderModal" class="modal-overlay">
     <div class="modal-card">
         <div class="modal-header">
@@ -184,7 +190,7 @@
     </div>
 </div>
 
-<!-- 📦 彈窗 B：加入色號 Modal (送出後自動關閉) -->
+<!-- 彈窗 B：加入色號 Modal -->
 <div id="itemModal" class="modal-overlay">
     <div class="modal-card">
         <div class="modal-header">
@@ -207,7 +213,7 @@
     </div>
 </div>
 
-<!-- 📷 相機掃描 QR 彈窗 -->
+<!-- 相機掃描 QR 彈窗 -->
 <div id="scannerModal" class="modal-overlay" style="z-index: 1100;">
     <div class="modal-card" style="text-align: center;">
         <div class="modal-header">
@@ -223,7 +229,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script>
-    let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDBV8')) || {};
+    let ordersDB = JSON.parse(localStorage.getItem('ordersMasterDBV9')) || {};
     let colorCatalog = JSON.parse(localStorage.getItem('colorCatalogDB')) || {};
     let currentOrder = null;
     let videoStream = null;
@@ -450,7 +456,7 @@
 
     function deleteColorRow(idx) { ordersDB[currentOrder].items.splice(idx, 1); saveOrders(); renderDetailTable(); }
     function deleteOrder(e, id) { e.stopPropagation(); if (confirm(`刪除訂單「${id}」？`)) { delete ordersDB[id]; saveOrders(); renderOrderList(); } }
-    function saveOrders() { localStorage.setItem('ordersMasterDBV8', JSON.stringify(ordersDB)); }
+    function saveOrders() { localStorage.setItem('ordersMasterDBV9', JSON.stringify(ordersDB)); }
 
     function renderOrderList() {
         const grid = document.getElementById('orderListGrid');
@@ -479,7 +485,7 @@
         const tbody = document.getElementById('detailTableBody');
 
         if (!items.length) {
-            tbody.innerHTML = `<tr><td colspan="5" style="color:#9ca3af;padding:30px;">尚無色號資料，點擊上方「加入色號」開始建立。</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" style="color:#9ca3af;padding:30px;">尚無色號資料，點擊上方「加入色號」開始建立。</td></tr>`;
             return;
         }
 
@@ -488,26 +494,31 @@
         tbody.innerHTML = items.map((i, idx) => {
             nTotal += i.nestingQty;
             sTotal += i.sawQty;
-            const lbl = `<span class="merged-text">${escapeHtml(i.colorCode)}</span><span class="merged-sub">${escapeHtml(i.woodName)}</span>`;
             return `<tr>
-                <td class="cell-n">${i.nestingQty > 0 ? lbl : ''}</td>
-                <td class="cell-n divider qty-bold">${i.nestingQty > 0 ? i.nestingQty : ''}</td>
-                <td class="cell-s">${i.sawQty > 0 ? lbl : ''}</td>
-                <td class="cell-s qty-bold">${i.sawQty > 0 ? i.sawQty : ''}</td>
+                <td class="cell-color">
+                    <span class="merged-text">${escapeHtml(i.colorCode)}</span>
+                    <span class="merged-sub">${escapeHtml(i.woodName)}</span>
+                </td>
+                <td class="cell-n divider ${i.nestingQty > 0 ? 'qty-bold' : 'qty-empty'}">${i.nestingQty > 0 ? i.nestingQty : '-'}</td>
+                <td class="cell-s divider ${i.sawQty > 0 ? 'qty-bold' : 'qty-empty'}">${i.sawQty > 0 ? i.sawQty : '-'}</td>
                 <td><button class="btn-del" onclick="deleteColorRow(${idx})">刪除</button></td>
             </tr>`;
-        }).join('') + `<tr class="sum-row"><td style="text-align:right;">Nesting 合計：</td><td class="divider" style="color:#1e40af;font-size:17px;">${nTotal} 片</td><td style="text-align:right;">電子鋸 合計：</td><td style="color:#b45309;font-size:17px;">${sTotal} 片</td><td></td></tr>`;
+        }).join('') + `
+            <tr class="sum-row">
+                <td style="text-align:right; color:#334155; border-right:2px solid #cbd5e1;">合計：</td>
+                <td class="divider" style="color:#1e40af; font-size:17px;">${nTotal} 片</td>
+                <td class="divider" style="color:#b45309; font-size:17px;">${sTotal} 片</td>
+                <td></td>
+            </tr>`;
     }
 
     function exportSingleCSV() {
         const orderObj = ordersDB[currentOrder] || { items: [] };
         const items = orderObj.items || [];
         if (!items.length) return alert('無資料可匯出');
-        let csv = `\uFEFF訂單號,案名,出貨日期,Nesting(色號/木名),Nesting數量,電子鋸(色號/木名),電子鋸數量\n`;
+        let csv = `\uFEFF訂單號,案名,出貨日期,色號,木名,Nesting數量,電子鋸數量\n`;
         items.forEach(i => {
-            const nStr = i.nestingQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
-            const sStr = i.sawQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
-            csv += `"${currentOrder}","${orderObj.projectName || ''}","${orderObj.shipDate || ''}","${nStr}",${i.nestingQty || ''},"${sStr}",${i.sawQty || ''}\n`;
+            csv += `"${currentOrder}","${orderObj.projectName || ''}","${orderObj.shipDate || ''}","${i.colorCode}","${i.woodName}",${i.nestingQty || ''},${i.sawQty || ''}\n`;
         });
         downloadCSV(csv, `訂單_${currentOrder}.csv`);
     }
@@ -515,13 +526,11 @@
     function exportAllCSV() {
         const keys = Object.keys(ordersDB);
         if (!keys.length) return alert('無資料可匯出');
-        let csv = `\uFEFF訂單號,案名,出貨日期,Nesting(色號/木名),Nesting數量,電子鋸(色號/木名),電子鋸數量\n`;
+        let csv = `\uFEFF訂單號,案名,出貨日期,色號,木名,Nesting數量,電子鋸數量\n`;
         keys.forEach(id => {
             const orderObj = ordersDB[id];
             (orderObj.items || []).forEach(i => {
-                const nStr = i.nestingQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
-                const sStr = i.sawQty > 0 ? `${i.colorCode} ${i.woodName}` : '';
-                csv += `"${id}","${orderObj.projectName || ''}","${orderObj.shipDate || ''}","${nStr}",${i.nestingQty || ''},"${sStr}",${i.sawQty || ''}\n`;
+                csv += `"${id}","${orderObj.projectName || ''}","${orderObj.shipDate || ''}","${i.colorCode}","${i.woodName}",${i.nestingQty || ''},${i.sawQty || ''}\n`;
             });
         });
         downloadCSV(csv, `全部訂單分板總表.csv`);
