@@ -21,8 +21,10 @@
         .tab.active { background: #1e3a8a; color: #fff; }
 
         .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
-        .order-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; cursor: pointer; }
+        .order-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; cursor: pointer; position: relative; }
         .order-box:hover { border-color: #2563eb; background: #eff6ff; }
+        .order-del-btn { position: absolute; top: 12px; right: 12px; background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; padding: 4px 9px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .order-del-btn:hover { background: #fecaca; }
 
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th, td { padding: 11px 8px; border-bottom: 1px solid #e2e8f0; text-align: center; font-size: 15px; vertical-align: middle; }
@@ -327,6 +329,15 @@
         renderOrders();
     }
 
+    function delOrder(e, id) {
+        e.stopPropagation();
+        if (!confirm(`確定要刪除訂單「${id}」嗎？`)) return;
+        delete db[id];
+        if (curId === id) backToList();
+        else { saveAll(); renderOrders(); }
+        if (db[id] === undefined) saveAll();
+    }
+
     function delItem(idx) {
         db[curId].items.splice(idx, 1);
         saveAll();
@@ -339,8 +350,10 @@
             const o = db[id];
             const nSum = (o.items || []).reduce((a, b) => a + b.n, 0);
             const sSum = (o.items || []).reduce((a, b) => a + b.s, 0);
-            return `<div class="order-box" onclick="openDetail('${id.replace(/'/g, "\\'")}')">
-                <h3 style="margin:0 0 6px 0; color:#1e3a8a;">${id}</h3>
+            const safeId = id.replace(/'/g, "\\'");
+            return `<div class="order-box" onclick="openDetail('${safeId}')">
+                <button type="button" class="order-del-btn" onclick="delOrder(event, '${safeId}')">刪除</button>
+                <h3 style="margin:0 0 6px 0; color:#1e3a8a; padding-right:42px;">${id}</h3>
                 <div style="font-size:13px; color:#475569;">案名：${o.project || '未填'}｜出貨：${o.date || '未定'}<br>Nesting：<strong>${nSum}</strong>｜電子鋸：<strong>${sSum}</strong></div>
             </div>`;
         }).join('') : '<div style="color:#64748b;">尚無訂單，點上方「➕ 新建訂單」開始。</div>';
@@ -432,7 +445,7 @@
     }
 </script>
 
-<!-- 獨立相機掃描模組（動態載入 jsQR，不影響主腳本） -->
+<!-- 獨立相機掃描模組 -->
 <script>
     let camStream = null;
     let camActive = false;
