@@ -43,7 +43,6 @@
         input, textarea { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; width: 100%; background: #fff; }
         .row2 { display: flex; gap: 10px; }
 
-        /* 打字時才出現的預設／已建檔清單 */
         .type-list { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; max-height: 180px; overflow-y: auto; z-index: 30; box-shadow: 0 6px 14px rgba(0,0,0,0.12); }
         .type-item { padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; font-size: 14px; }
         .type-item:hover { background: #eff6ff; }
@@ -102,16 +101,24 @@
 
     <!-- 色號對照表分頁 -->
     <div id="secCatalog" style="display:none;">
+        <div class="card top-bar">
+            <h2 style="margin:0;">色號對照表管理</h2>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button type="button" class="btn" onclick="openCatalogListModal()">➕ 新建清單</button>
+            </div>
+        </div>
+
         <div class="card">
-            <h3 style="margin-top:0;">新增 / 修改 色號對照</h3>
+            <h3 style="margin-top:0;">新增 / 修改 單筆色號對照</h3>
             <div class="row2" style="flex-wrap:wrap;">
-                <div class="field"><label>色號 *</label><input type="text" id="catCode" placeholder="例: H3303"></div>
-                <div class="field"><label>木名 *</label><input type="text" id="catWood" placeholder="例: 漢密爾頓橡木"></div>
+                <div class="field"><label>色號 *</label><input type="text" id="catCode" autocomplete="off" placeholder="例: H3303"></div>
+                <div class="field"><label>木名 *</label><input type="text" id="catWood" autocomplete="off" placeholder="例: 漢密爾頓橡木"></div>
                 <div style="display:flex; align-items:flex-end; margin-bottom:12px;">
                     <button type="button" class="btn" onclick="saveCatalogItem()">儲存</button>
                 </div>
             </div>
         </div>
+
         <div class="card">
             <h3 style="margin-top:0;">批次匯入（每行一筆，可用空白、逗號或 Tab 分隔）</h3>
             <textarea id="catBatch" rows="3" placeholder="H3303 漢密爾頓橡木&#10;701 雪白"></textarea>
@@ -119,10 +126,11 @@
                 <button type="button" class="btn btn-green" onclick="importCatalogBatch()">⚡ 匯入對照</button>
             </div>
         </div>
+
         <div class="card">
             <div class="top-bar" style="margin-bottom:12px;">
                 <h3 style="margin:0;">已建檔色號（<span id="catCount">0</span>）</h3>
-                <input type="text" id="catSearch" oninput="renderCatalog()" placeholder="搜尋色號或木名..." style="max-width:220px;">
+                <input type="text" id="catSearch" autocomplete="off" oninput="renderCatalog()" placeholder="搜尋色號或木名..." style="max-width:220px;">
             </div>
             <table>
                 <thead><tr><th class="col-color" style="width:30%;">色號</th><th class="col-color" style="width:52%;">木名</th><th style="width:18%;">操作</th></tr></thead>
@@ -139,12 +147,12 @@
         <div class="field">
             <label>訂單號 *</label>
             <div style="display:flex; gap:8px;">
-                <input type="text" id="inOrderId" placeholder="輸入或掃描單號">
+                <input type="text" id="inOrderId" autocomplete="off" placeholder="輸入或掃描單號">
                 <button type="button" class="btn btn-purple" style="white-space:nowrap;" onclick="openCamModal()">📷 掃描</button>
             </div>
         </div>
-        <div class="field"><label>案名</label><input type="text" id="inProject"></div>
-        <div class="field"><label>出貨日期</label><input type="date" id="inDate"></div>
+        <div class="field"><label>案名</label><input type="text" id="inProject" autocomplete="off"></div>
+        <div class="field"><label>出貨日期</label><input type="date" id="inDate" autocomplete="off"></div>
         <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
             <button type="button" class="btn btn-gray" onclick="closeOrderModal()">取消</button>
             <button type="button" class="btn" onclick="submitOrder()">確定建立</button>
@@ -163,11 +171,11 @@
         </div>
         <div class="field">
             <label>木名 *</label>
-            <input type="text" id="inWood" placeholder="例: 漢密爾頓橡木">
+            <input type="text" id="inWood" autocomplete="off" placeholder="例: 漢密爾頓橡木">
         </div>
         <div class="row2">
-            <div class="field"><label>Nesting 數</label><input type="number" id="inN" min="0"></div>
-            <div class="field"><label>電子鋸 數</label><input type="number" id="inS" min="0"></div>
+            <div class="field"><label>Nesting 數</label><input type="number" id="inN" min="0" autocomplete="off"></div>
+            <div class="field"><label>電子鋸 數</label><input type="number" id="inS" min="0" autocomplete="off"></div>
         </div>
         <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
             <button type="button" class="btn btn-gray" onclick="closeItemModal()">取消</button>
@@ -181,12 +189,12 @@
     <div class="modal-card">
         <h3 style="margin-top:0;">微調機台欄寬 (%)</h3>
         <div class="row2">
-            <div class="field"><label>色號/木名 (%)</label><input type="number" id="wColor" min="15" max="60"></div>
-            <div class="field"><label>操作欄 (%)</label><input type="number" id="wAct" min="8" max="30"></div>
+            <div class="field"><label>色號/木名 (%)</label><input type="number" id="wColor" min="15" max="60" autocomplete="off"></div>
+            <div class="field"><label>操作欄 (%)</label><input type="number" id="wAct" min="8" max="30" autocomplete="off"></div>
         </div>
         <div class="row2">
-            <div class="field"><label>Nesting (%)</label><input type="number" id="wM1" min="10" max="60"></div>
-            <div class="field"><label>電子鋸 (%)</label><input type="number" id="wM2" min="10" max="60"></div>
+            <div class="field"><label>Nesting (%)</label><input type="number" id="wM1" min="10" max="60" autocomplete="off"></div>
+            <div class="field"><label>電子鋸 (%)</label><input type="number" id="wM2" min="10" max="60" autocomplete="off"></div>
         </div>
         <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
             <button type="button" class="btn btn-gray" onclick="closeWidthModal()">取消</button>
@@ -203,6 +211,21 @@
         <canvas id="camCanvas" style="display:none;"></canvas>
         <p id="camStatus" style="font-size:13px; color:#64748b;">準備開啟鏡頭...</p>
         <button type="button" class="btn btn-gray" style="width:100%;" onclick="closeCamModal()">關閉相機</button>
+    </div>
+</div>
+
+<!-- 彈窗5：新建色號清單 -->
+<div id="catalogListModal" class="modal-bg">
+    <div class="modal-card">
+        <h3 style="margin-top:0;">新建色號清單</h3>
+        <div class="field">
+            <label>每行一筆（色號 與 木名 可用空白、逗號或 Tab 分隔）</label>
+            <textarea id="modalCatList" rows="6" placeholder="H3303 漢密爾頓橡木&#10;701 雪白&#10;U999 炭黑"></textarea>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+            <button type="button" class="btn btn-gray" onclick="closeCatalogListModal()">取消</button>
+            <button type="button" class="btn btn-green" onclick="submitCatalogListModal()">建立清單</button>
+        </div>
     </div>
 </div>
 
@@ -357,6 +380,30 @@
         applyWidths();
         saveAll();
         closeWidthModal();
+    }
+
+    function openCatalogListModal() {
+        document.getElementById('catalogListModal').style.display = 'flex';
+        document.getElementById('modalCatList').focus();
+    }
+
+    function closeCatalogListModal() {
+        document.getElementById('catalogListModal').style.display = 'none';
+        document.getElementById('modalCatList').value = '';
+    }
+
+    function submitCatalogListModal() {
+        const lines = document.getElementById('modalCatList').value.trim().split(/\r?\n/);
+        let n = 0;
+        lines.forEach(line => {
+            const m = line.trim().match(/^([^\t,，\s]+)[\t,，\s]+(.+)$/);
+            if (m) { catalog[m[1].trim()] = m[2].trim(); n++; }
+        });
+        if (!n) return alert('請至少輸入一組色號與木名');
+        saveAll();
+        closeCatalogListModal();
+        renderCatalog();
+        alert(`已建立並存入 ${n} 筆色號`);
     }
 
     function openDetail(id) {
