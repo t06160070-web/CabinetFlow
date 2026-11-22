@@ -101,29 +101,17 @@
 
     <!-- 色號對照表分頁 -->
     <div id="secCatalog" style="display:none;">
-        <div class="card top-bar">
-            <h2 style="margin:0;">色號對照表管理</h2>
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button type="button" class="btn" onclick="openCatalogListModal()">➕ 新建清單</button>
-            </div>
-        </div>
-
         <div class="card">
-            <h3 style="margin-top:0;">新增 / 修改 單筆色號對照</h3>
+            <div class="top-bar" style="margin-bottom:12px;">
+                <h3 style="margin:0;">新增 / 修改 色號對照</h3>
+                <button type="button" class="btn btn-green" onclick="openCatalogListModal()">➕ 新建清單</button>
+            </div>
             <div class="row2" style="flex-wrap:wrap;">
                 <div class="field"><label>色號 *</label><input type="text" id="catCode" autocomplete="off" placeholder="例: H3303"></div>
                 <div class="field"><label>木名 *</label><input type="text" id="catWood" autocomplete="off" placeholder="例: 漢密爾頓橡木"></div>
                 <div style="display:flex; align-items:flex-end; margin-bottom:12px;">
                     <button type="button" class="btn" onclick="saveCatalogItem()">儲存</button>
                 </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <h3 style="margin-top:0;">批次匯入（每行一筆，可用空白、逗號或 Tab 分隔）</h3>
-            <textarea id="catBatch" rows="3" placeholder="H3303 漢密爾頓橡木&#10;701 雪白"></textarea>
-            <div style="margin-top:10px; display:flex; gap:10px;">
-                <button type="button" class="btn btn-green" onclick="importCatalogBatch()">⚡ 匯入對照</button>
             </div>
         </div>
 
@@ -214,17 +202,17 @@
     </div>
 </div>
 
-<!-- 彈窗5：新建色號清單 -->
+<!-- 彈窗5：新建清單（批次匯入對照） -->
 <div id="catalogListModal" class="modal-bg">
     <div class="modal-card">
         <h3 style="margin-top:0;">新建色號清單</h3>
         <div class="field">
-            <label>每行一筆（色號 與 木名 可用空白、逗號或 Tab 分隔）</label>
-            <textarea id="modalCatList" rows="6" placeholder="H3303 漢密爾頓橡木&#10;701 雪白&#10;U999 炭黑"></textarea>
+            <label>每行一筆（可用空白、逗號或 Tab 分隔）</label>
+            <textarea id="modalCatList" rows="6" placeholder="H3303 漢密爾頓橡木&#10;701 雪白"></textarea>
         </div>
         <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
             <button type="button" class="btn btn-gray" onclick="closeCatalogListModal()">取消</button>
-            <button type="button" class="btn btn-green" onclick="submitCatalogListModal()">建立清單</button>
+            <button type="button" class="btn btn-green" onclick="submitCatalogListModal()">⚡ 匯入對照</button>
         </div>
     </div>
 </div>
@@ -399,11 +387,11 @@
             const m = line.trim().match(/^([^\t,，\s]+)[\t,，\s]+(.+)$/);
             if (m) { catalog[m[1].trim()] = m[2].trim(); n++; }
         });
-        if (!n) return alert('請至少輸入一組色號與木名');
+        if (!n) return alert('沒有可匯入的資料');
         saveAll();
         closeCatalogListModal();
         renderCatalog();
-        alert(`已建立並存入 ${n} 筆色號`);
+        alert(`已匯入 ${n} 筆`);
     }
 
     function openDetail(id) {
@@ -475,20 +463,6 @@
         document.getElementById('catCode').value = '';
         document.getElementById('catWood').value = '';
         renderCatalog();
-    }
-
-    function importCatalogBatch() {
-        const lines = document.getElementById('catBatch').value.trim().split(/\r?\n/);
-        let n = 0;
-        lines.forEach(line => {
-            const m = line.trim().match(/^([^\t,，\s]+)[\t,，\s]+(.+)$/);
-            if (m) { catalog[m[1].trim()] = m[2].trim(); n++; }
-        });
-        if (!n) return alert('沒有可匯入的資料');
-        saveAll();
-        document.getElementById('catBatch').value = '';
-        renderCatalog();
-        alert(`已匯入 ${n} 筆`);
     }
 
     function delCatalog(c) {
