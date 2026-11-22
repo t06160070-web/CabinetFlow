@@ -34,6 +34,11 @@
         .sum-row td { background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; }
         .row-acts { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
 
+        .prep-cell { cursor: pointer; user-select: none; transition: background 0.15s, color 0.15s; }
+        .prep-cell:hover { filter: brightness(0.96); }
+        .prep-done { background: #e2e8f0 !important; color: #94a3b8 !important; }
+        .prep-done strong { color: #94a3b8; text-decoration: line-through; }
+
         .code-line { display: block; font-size: 14px; font-weight: bold; color: #111827; line-height: 1.3; }
         .wood-subline { display: block; font-size: 11.5px; font-weight: normal; color: #64748b; line-height: 1.35; margin-top: 2px; }
 
@@ -359,8 +364,10 @@ function renderDetail() {
     tbody.innerHTML = '';
 
     items.forEach((it, idx) => {
-        nSum += Number(it.n) || 0;
-        sSum += Number(it.s) || 0;
+        const nVal = Number(it.n) || 0;
+        const sVal = Number(it.s) || 0;
+        nSum += nVal;
+        sSum += sVal;
         const tr = document.createElement('tr');
 
         const tdColor = document.createElement('td');
@@ -368,10 +375,26 @@ function renderDetail() {
         tdColor.innerHTML = '<span class="code-line">' + it.code + '</span><span class="wood-subline">' + it.wood + '</span>';
 
         const tdN = document.createElement('td');
-        tdN.innerHTML = '<strong>' + (it.n || '-') + '</strong>';
+        tdN.innerHTML = '<strong>' + (nVal || '-') + '</strong>';
+        if (nVal > 0) {
+            tdN.className = 'prep-cell' + (it.nDone ? ' prep-done' : '');
+            tdN.onclick = () => {
+                it.nDone = !it.nDone;
+                saveAll();
+                renderDetail();
+            };
+        }
 
         const tdS = document.createElement('td');
-        tdS.innerHTML = '<strong>' + (it.s || '-') + '</strong>';
+        tdS.innerHTML = '<strong>' + (sVal || '-') + '</strong>';
+        if (sVal > 0) {
+            tdS.className = 'prep-cell' + (it.sDone ? ' prep-done' : '');
+            tdS.onclick = () => {
+                it.sDone = !it.sDone;
+                saveAll();
+                renderDetail();
+            };
+        }
 
         const tdAct = document.createElement('td');
         const acts = document.createElement('div');
@@ -533,11 +556,18 @@ function confirmItem() {
     const s = Number(document.getElementById('inS').value) || 0;
     if (!code || !wood || (n === 0 && s === 0)) return alert('請填色號、木名與至少一邊數量');
     catalog[code] = wood;
-    const rowData = { code, wood, n, s };
     if (editItemIdx !== null && db[curId].items[editItemIdx]) {
-        db[curId].items[editItemIdx] = rowData;
+        const old = db[curId].items[editItemIdx];
+        db[curId].items[editItemIdx] = {
+            code,
+            wood,
+            n,
+            s,
+            nDone: n > 0 ? Boolean(old.nDone) : false,
+            sDone: s > 0 ? Boolean(old.sDone) : false
+        };
     } else {
-        db[curId].items.push(rowData);
+        db[curId].items.push({ code, wood, n, s, nDone: false, sDone: false });
     }
     saveAll();
     renderDetail();
@@ -734,7 +764,6 @@ function closeCamModal() {
     document.getElementById('camModal').style.display = 'none';
 }
 
-// 逐顆獨立綁定，即使單顆出錯也不影響其他顆
 [
     ['tabOrders', () => switchTab('orders')],
     ['tabCatalog', () => switchTab('catalog')],
