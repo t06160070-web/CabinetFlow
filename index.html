@@ -514,4 +514,272 @@ function onTypeColor() {
         const div = document.createElement('div');
         div.className = 'type-item';
         div.innerHTML = '<strong>' + c + '</strong><span style="color:#64748b;">' + w + '</span>';
-        div.
+        div.onclick = () => {
+            document.getElementById('inCode').value = c;
+            document.getElementById('inWood').value = w;
+            box.style.display = 'none';
+            document.getElementById('inN').focus();
+        };
+        box.appendChild(div);
+    });
+    box.style.display = 'block';
+}
+
+function confirmItem() {
+    if (!curId) return;
+    const code = document.getElementById('inCode').value.trim();
+    const wood = document.getElementById('inWood').value.trim();
+    const n = Number(document.getElementById('inN').value) || 0;
+    const s = Number(document.getElementById('inS').value) || 0;
+    if (!code || !wood || (n === 0 && s === 0)) return alert('請填色號、木名與至少一邊數量');
+    catalog[code] = wood;
+    const rowData = { code, wood, n, s };
+    if (editItemIdx !== null && db[curId].items[editItemIdx]) {
+        db[curId].items[editItemIdx] = rowData;
+    } else {
+        db[curId].items.push(rowData);
+    }
+    saveAll();
+    renderDetail();
+    closeItemModal();
+}
+
+function openWidthModal() {
+    document.getElementById('wColor').value = widths.color;
+    document.getElementById('wM1').value = widths.m1;
+    document.getElementById('wM2').value = widths.m2;
+    document.getElementById('wAct').value = widths.act;
+    document.getElementById('widthModal').style.display = 'flex';
+}
+
+function closeWidthModal() {
+    document.getElementById('widthModal').style.display = 'none';
+}
+
+function confirmWidths() {
+    widths = {
+        color: Number(document.getElementById('wColor').value) || 32,
+        m1: Number(document.getElementById('wM1').value) || 27,
+        m2: Number(document.getElementById('wM2').value) || 27,
+        act: Number(document.getElementById('wAct').value) || 14
+    };
+    applyWidths();
+    saveAll();
+    closeWidthModal();
+}
+
+function openCatalogListModal() {
+    document.getElementById('modalCatList').value = '';
+    document.getElementById('catalogListModal').style.display = 'flex';
+    document.getElementById('modalCatList').focus();
+}
+
+function closeCatalogListModal() {
+    document.getElementById('catalogListModal').style.display = 'none';
+}
+
+function confirmCatalogList() {
+    const lines = document.getElementById('modalCatList').value.trim().split(/\r?\n/);
+    let n = 0;
+    lines.forEach(line => {
+        const m = line.trim().match(/^([^\t,，\s]+)[\t,，\s]+(.+)$/);
+        if (m) { catalog[m[1].trim()] = m[2].trim(); n++; }
+    });
+    if (!n) return alert('沒有可匯入的資料');
+    saveAll();
+    closeCatalogListModal();
+    renderCatalog();
+    alert('已匯入 ' + n + ' 筆');
+}
+
+function saveCatalogItem() {
+    const c = document.getElementById('catCode').value.trim();
+    const w = document.getElementById('catWood').value.trim();
+    if (!c || !w) return alert('請填寫色號與木名');
+    catalog[c] = w;
+    saveAll();
+    document.getElementById('catCode').value = '';
+    document.getElementById('catWood').value = '';
+    renderCatalog();
+}
+
+function renderCatalog() {
+    const kw = document.getElementById('catSearch').value.trim().toLowerCase();
+    const entries = Object.entries(catalog).filter(([c, w]) =>
+        c.toLowerCase().includes(kw) || w.toLowerCase().includes(kw)
+    );
+    document.getElementById('catCount').textContent = Object.keys(catalog).length;
+    const tbody = document.getElementById('catBody');
+    tbody.innerHTML = '';
+
+    if (!entries.length) {
+        tbody.innerHTML = '<tr><td colspan="3" style="color:#94a3b8;">尚無色號對照</td></tr>';
+        return;
+    }
+
+    entries.forEach(([c, w]) => {
+        const tr = document.createElement('tr');
+        const tdC = document.createElement('td');
+        tdC.className = 'col-color';
+        tdC.innerHTML = '<strong>' + c + '</strong>';
+
+        const tdW = document.createElement('td');
+        tdW.className = 'col-color';
+        tdW.textContent = w;
+
+        const tdAct = document.createElement('td');
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn btn-red';
+        delBtn.textContent = '刪除';
+        delBtn.onclick = () => {
+            delete catalog[c];
+            saveAll();
+            renderCatalog();
+        };
+
+        tdAct.appendChild(delBtn);
+        tr.appendChild(tdC);
+        tr.appendChild(tdW);
+        tr.appendChild(tdAct);
+        tbody.appendChild(tr);
+    });
+}
+
+function dl(csv, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    a.download = name;
+    a.click();
+}
+
+function exportCatalog() {
+    const entries = Object.entries(catalog);
+    if (!entries.length) return alert('無色號對照資料');
+    let csv = '\uFEFF色號,木名\n';
+    entries.forEach(([c, w]) => csv += '"' + c + '","' + w + '"\n');
+    dl(csv, '色號對照表.csv');
+}
+
+function exportOne() {
+    const o = db[curId];
+    if (!o || !o.items || !o.items.length) return alert('無資料');
+    let csv = '\uFEFF訂單號,案名,出貨日期,色號,木名,Nesting數量,電子鋸數量\n';
+    o.items.forEach(i => csv += '"' + curId + '","' + (o.project || '') + '","' + (o.date || '') + '","' + i.code + '","' + i.wood + '",' + (i.n || '') + ',' + (i.s || '') + '\n');
+    dl(csv, '訂單_' + curId + '.csv');
+}
+
+function exportAll() {
+    const keys = Object.keys(db);
+    if (!keys.length) return alert('無資料');
+    let csv = '\uFEFF訂單號,案名,出貨日期,色號,木名,Nesting數量,電子鋸數量\n';
+    keys.forEach(id => {
+        const o = db[id] || {};
+        (o.items || []).forEach(i => csv += '"' + id + '","' + (o.project || '') + '","' + (o.date || '') + '","' + i.code + '","' + i.wood + '",' + (i.n || '') + ',' + (i.s || '') + '\n');
+    });
+    dl(csv, '全部訂單總表.csv');
+}
+
+function openCamModal() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        return alert('目前瀏覽器或環境不支援相機掃描');
+    }
+    document.getElementById('camModal').style.display = 'flex';
+    document.getElementById('camStatus').textContent = '啟動鏡頭中...';
+    camActive = true;
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => {
+            camStream = stream;
+            const video = document.getElementById('camVideo');
+            video.srcObject = stream;
+            video.play();
+            document.getElementById('camStatus').textContent = '請對準 QR Code';
+            requestAnimationFrame(scanFrame);
+        })
+        .catch(() => {
+            alert('無法開啟相機，請檢查權限設定');
+            closeCamModal();
+        });
+}
+
+function scanFrame() {
+    if (!camActive) return;
+    const video = document.getElementById('camVideo');
+    if (video.readyState === video.HAVE_ENOUGH_DATA && typeof window.jsQR === 'function') {
+        const canvas = document.getElementById('camCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+        if (code && code.data && code.data.trim()) {
+            document.getElementById('inOrderId').value = code.data.trim();
+            closeCamModal();
+            return;
+        }
+    }
+    if (camActive) requestAnimationFrame(scanFrame);
+}
+
+function closeCamModal() {
+    camActive = false;
+    if (camStream) {
+        camStream.getTracks().forEach(t => t.stop());
+        camStream = null;
+    }
+    const video = document.getElementById('camVideo');
+    if (video) video.srcObject = null;
+    document.getElementById('camModal').style.display = 'none';
+}
+
+// 逐顆獨立綁定，即使單顆出錯也不影響其他顆
+[
+    ['tabOrders', () => switchTab('orders')],
+    ['tabCatalog', () => switchTab('catalog')],
+    ['btnNewOrder', openOrderModal],
+    ['btnWidthList', openWidthModal],
+    ['btnExportAll', exportAll],
+    ['btnBack', backToList],
+    ['btnEditOrder', openEditOrderModal],
+    ['btnAddItem', openItemModal],
+    ['btnWidthDetail', openWidthModal],
+    ['btnExportOne', exportOne],
+    ['btnNewCatList', openCatalogListModal],
+    ['btnExportCat', exportCatalog],
+    ['btnSaveCat', saveCatalogItem],
+    ['btnOpenCam', openCamModal],
+    ['btnCancelOrder', closeOrderModal],
+    ['btnConfirmOrder', confirmOrder],
+    ['btnCancelItem', closeItemModal],
+    ['btnConfirmItem', confirmItem],
+    ['btnCancelWidth', closeWidthModal],
+    ['btnConfirmWidth', confirmWidths],
+    ['btnCloseCam', closeCamModal],
+    ['btnCancelCatList', closeCatalogListModal],
+    ['btnConfirmCatList', confirmCatalogList],
+    ['btnCancelEditOrder', closeEditOrderModal],
+    ['btnConfirmEditOrder', confirmEditOrder]
+].forEach(([id, fn]) => {
+    try {
+        const el = document.getElementById(id);
+        if (el) el.onclick = fn;
+    } catch (e) {}
+});
+
+try { document.getElementById('catSearch').oninput = renderCatalog; } catch (e) {}
+try { document.getElementById('inCode').oninput = onTypeColor; } catch (e) {}
+try { applyWidths(); } catch (e) {}
+try { renderOrders(); } catch (e) {}
+
+setTimeout(() => {
+    try {
+        const qrScript = document.createElement('script');
+        qrScript.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+        document.body.appendChild(qrScript);
+    } catch (e) {}
+}, 500);
+</script>
+</body>
+</html>
