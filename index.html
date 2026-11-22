@@ -6,8 +6,8 @@
     <title>系統櫃訂單分板系統</title>
     <style>
         * { box-sizing: border-box; font-family: "Microsoft JhengHei", sans-serif; }
-        body { margin: 0; padding: 20px 16px; background: #eef2f6; color: #1f2937; display: flex; justify-content: center; }
-        .wrap { width: 100%; max-width: 1050px; margin: 0 auto; overflow-x: hidden; }
+        body { margin: 0; padding: 20px 16px; background: #eef2f6; color: #1f2937; }
+        .wrap { width: 100%; max-width: 1050px; margin: 0 auto; }
         .card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 18px; }
         .top-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; color: #fff; background: #2563eb; }
@@ -329,7 +329,7 @@
         db[curId].project = document.getElementById('editProject').value.trim();
         db[curId].date = document.getElementById('editDate').value;
         saveAll();
-        document.getElementById('detailTitle').textContent = `[${curId}] ${db[curId].project || '未命名'}｜出貨日期：${db[curId].date || '未定'}`;
+        document.getElementById('detailTitle').textContent = `[${curId}] ${db[curId].project \vert{}\vert{} '未命名'}｜出貨日期：${db[curId].date || '未定'}`;
         closeEditOrderModal();
     }
 
@@ -384,19 +384,84 @@
             return;
         }
         box.innerHTML = matches.map(([c, w]) =>
-            `<div class="type-item" onclick="pickTypeColor('${c.replace(/'/g, "\\'")}', '${w.replace(/'/g, "\\'")}')"><strong>${c}</strong><span style="color:#64748b;">${w}</span></div>`
-        ).join('');
-        box.style.display = 'block';
+            `<div class="type-item" onclick="pickTypeColor('${c.replace(/'/g, "\\'")}', '${w.replace(/'/g, "\\'")}')"><strong>${c}</strong><span style="color:#64748b;">${w}</span></div>` ).join(''); box.style.display = 'block'; }  function pickTypeColor(c, w) { document.getElementById('inCode').value = c; document.getElementById('inWood').value = w; document.getElementById('typeColorList').style.display = 'none'; document.getElementById('inN').focus(); }  function submitItem() { if (!curId) return; const code = document.getElementById('inCode').value.trim(); const wood = document.getElementById('inWood').value.trim(); const n = Number(document.getElementById('inN').value) \vert{}\vert{} 0; const s = Number(document.getElementById('inS').value) \vert{}\vert{} 0; if (!code \vert{}\vert{} !wood \vert{}\vert{} (n === 0 && s === 0)) return alert('請填色號、木名與至少一邊數量'); catalog[code] = wood; const rowData = { code, wood, n, s }; if (editItemIdx !== null && db[curId].items[editItemIdx]) { db[curId].items[editItemIdx] = rowData; } else { db[curId].items.push(rowData); } saveAll(); renderDetail(); closeItemModal(); }  function openWidthModal() { document.getElementById('wColor').value = widths.color; document.getElementById('wM1').value = widths.m1; document.getElementById('wM2').value = widths.m2; document.getElementById('wAct').value = widths.act; document.getElementById('widthModal').style.display = 'flex'; }  function closeWidthModal() { document.getElementById('widthModal').style.display = 'none'; }  function submitWidths() { widths = { color: Number(document.getElementById('wColor').value) \vert{}\vert{} 32, m1: Number(document.getElementById('wM1').value) \vert{}\vert{} 27, m2: Number(document.getElementById('wM2').value) \vert{}\vert{} 27, act: Number(document.getElementById('wAct').value) \vert{}\vert{} 14 }; applyWidths(); saveAll(); closeWidthModal(); }  function openCatalogListModal() { document.getElementById('catalogListModal').style.display = 'flex'; document.getElementById('modalCatList').focus(); }  function closeCatalogListModal() { document.getElementById('catalogListModal').style.display = 'none'; document.getElementById('modalCatList').value = ''; }  function submitCatalogListModal() { const lines = document.getElementById('modalCatList').value.trim().split(/\r?\n/); let n = 0; lines.forEach(line => { const m = line.trim().match(/^([^\t,，\s]+)[\t,，\s]+(.+)$/); if (m) { catalog[m[1].trim()] = m[2].trim(); n++; } }); if (!n) return alert('沒有可匯入的資料'); saveAll(); closeCatalogListModal(); renderCatalog(); alert(`已匯入 ${n} 筆`);
     }
 
-    function pickTypeColor(c, w) {
-        document.getElementById('inCode').value = c;
-        document.getElementById('inWood').value = w;
-        document.getElementById('typeColorList').style.display = 'none';
-        document.getElementById('inN').focus();
+    function openDetail(id) {
+        curId = id;
+        const o = db[id] || {};
+        document.getElementById('listView').style.display = 'none';
+        document.getElementById('detailView').style.display = 'block';
+        document.getElementById('detailTitle').textContent = `[${id}]${o.project || '未命名'}｜出貨日期：${o.date \vert{}\vert{} '未定'}`; renderDetail(); }  function backToList() { curId = null; document.getElementById('detailView').style.display = 'none'; document.getElementById('listView').style.display = 'block'; renderOrders(); }  function delOrder(e, id) { e.stopPropagation(); if (!confirm(`確定要刪除訂單「${id}」嗎？`)) return;
+        delete db[id];
+        saveAll();
+        if (curId === id) backToList();
+        else renderOrders();
     }
 
-    function submitItem() {
-        if (!curId) return;
-        const code = document.getElementById('inCode').value.trim();
-        const wood = document.getElementById('inWood').value.
+    function delItem(idx) {
+        db[curId].items.splice(idx, 1);
+        saveAll();
+        renderDetail();
+    }
+
+    function renderOrders() {
+        const keys = Object.keys(db).reverse();
+        document.getElementById('orderList').innerHTML = keys.length ? keys.map(id => {
+            const o = db[id];
+            const nSum = (o.items || []).reduce((a, b) => a + b.n, 0);
+            const sSum = (o.items || []).reduce((a, b) => a + b.s, 0);
+            const safeId = id.replace(/'/g, "\\'");
+            return `<div class="order-box" onclick="openDetail('${safeId}')">
+                <button type="button" class="order-del-btn" onclick="delOrder(event, '${safeId}')">刪除</button>
+                <h3 style="margin:0 0 6px 0; color:#1e3a8a; padding-right:42px;">${id}</h3>
+                <div style="font-size:13px; color:#475569;">案名：${o.project \vert{}\vert{} '未填'}｜出貨日期：${o.date || '未定'}<br>Nesting：<strong>${nSum}</strong>｜電子鋸：<strong>${sSum}</strong></div>
+            </div>`;
+        }).join('') : '<div style="color:#64748b;">尚無訂單，點上方「➕ 新建訂單」開始。</div>';
+    }
+
+    function renderDetail() {
+        const items = (db[curId] && db[curId].items) || [];
+        let nSum = 0, sSum = 0;
+        document.getElementById('detailBody').innerHTML = items.map((it, i) => {
+            nSum += it.n; sSum += it.s;
+            return `<tr>
+                <td class="col-color"><span class="code-line">${it.code}</span><span class="wood-subline">${it.wood}</span></td>
+                <td><strong>${it.n || '-'}</strong></td>
+                <td><strong>${it.s || '-'}</strong></td>
+                <td>
+                    <div class="row-acts">
+                        <button type="button" class="btn btn-amber" onclick="openEditItemModal(${i})">修改</button>
+                        <button type="button" class="btn btn-red" onclick="delItem(${i})">刪除</button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('') + `<tr class="sum-row"><td class="col-color">合計</td><td>${nSum} 片</td><td>${sSum} 片</td><td></td></tr>`;
+    }
+
+    function saveCatalogItem() {
+        const c = document.getElementById('catCode').value.trim();
+        const w = document.getElementById('catWood').value.trim();
+        if (!c || !w) return alert('請填寫色號與木名');
+        catalog[c] = w;
+        saveAll();
+        document.getElementById('catCode').value = '';
+        document.getElementById('catWood').value = '';
+        renderCatalog();
+    }
+
+    function delCatalog(c) {
+        delete catalog[c];
+        saveAll();
+        renderCatalog();
+    }
+
+    function renderCatalog() {
+        const kw = document.getElementById('catSearch').value.trim().toLowerCase();
+        const entries = Object.entries(catalog).filter(([c, w]) => c.toLowerCase().includes(kw) || w.toLowerCase().includes(kw));
+        document.getElementById('catCount').textContent = Object.keys(catalog).length;
+        document.getElementById('catBody').innerHTML = entries.length ? entries.map(([c, w]) => `
+            <tr>
+                <td class="col-color"><strong>${c}</strong></td>
+                <td class="col-color">${w}</td>
+                <td><button type="button"
