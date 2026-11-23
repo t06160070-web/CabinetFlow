@@ -27,12 +27,16 @@
         .order-del-btn { position: absolute; top: 12px; right: 12px; background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; padding: 4px 9px; font-size: 12px; font-weight: bold; cursor: pointer; }
 
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th, td { padding: 11px 8px; border-bottom: 1px solid #e2e8f0; text-align: center; font-size: 15px; vertical-align: middle; }
+        th, td { padding: 11px 6px; border-bottom: 1px solid #e2e8f0; text-align: center; font-size: 15px; vertical-align: middle; word-break: break-word; }
         th.col-color, td.col-color { text-align: left; padding-left: 12px; }
         th.th-m1 { background: #dbeafe; color: #1e40af; }
+        th.th-loc { background: #f1f5f9; color: #334155; }
         th.th-m2 { background: #fef3c7; color: #92400e; }
         .sum-row td { background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; }
-        .row-acts { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+
+        .color-edit-cell { cursor: pointer; transition: background 0.15s; }
+        .color-edit-cell:hover { background: #eff6ff; }
+        .loc-badge { display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; font-weight: bold; font-size: 13px; padding: 3px 8px; border-radius: 6px; }
 
         .prep-cell { cursor: pointer; user-select: none; transition: background 0.15s, color 0.15s; }
         .prep-cell:hover { filter: brightness(0.96); }
@@ -50,7 +54,7 @@
         .row2 { display: flex; gap: 10px; }
 
         .type-list { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; max-height: 180px; overflow-y: auto; z-index: 30; box-shadow: 0 6px 14px rgba(0,0,0,0.12); }
-        .type-item { padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; font-size: 14px; }
+        .type-item { padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px; }
         .type-item:hover { background: #eff6ff; }
     </style>
 </head>
@@ -94,9 +98,9 @@
                     <thead>
                         <tr>
                             <th id="thColor" class="col-color" style="width:32%;">色號 / 木名</th>
-                            <th id="thM1" class="th-m1" style="width:27%;">Nesting 數量</th>
-                            <th id="thM2" class="th-m2" style="width:27%;">電子鋸 數量</th>
-                            <th id="thAct" style="width:14%;">操作</th>
+                            <th id="thM1" class="th-m1" style="width:24%;">Nesting 數量</th>
+                            <th id="thLoc" class="th-loc" style="width:20%;">儲位</th>
+                            <th id="thM2" class="th-m2" style="width:24%;">電子鋸 數量</th>
                         </tr>
                     </thead>
                     <tbody id="detailBody"></tbody>
@@ -117,6 +121,7 @@
             <div class="row2" style="flex-wrap:wrap;">
                 <div class="field"><label>色號 *</label><input type="text" id="catCode" autocomplete="off" placeholder="例: H3303"></div>
                 <div class="field"><label>木名 *</label><input type="text" id="catWood" autocomplete="off" placeholder="例: 漢密爾頓橡木"></div>
+                <div class="field"><label>儲位</label><input type="text" id="catLoc" autocomplete="off" placeholder="例: A01"></div>
                 <div style="display:flex; align-items:flex-end; margin-bottom:12px;">
                     <button type="button" id="btnSaveCat" class="btn">儲存</button>
                 </div>
@@ -126,10 +131,17 @@
         <div class="card">
             <div class="top-bar" style="margin-bottom:12px;">
                 <h3 style="margin:0;">已建檔色號（<span id="catCount">0</span>）</h3>
-                <input type="text" id="catSearch" autocomplete="off" placeholder="搜尋色號或木名..." style="max-width:220px;">
+                <input type="text" id="catSearch" autocomplete="off" placeholder="搜尋色號、木名或儲位..." style="max-width:220px;">
             </div>
             <table>
-                <thead><tr><th class="col-color" style="width:30%;">色號</th><th class="col-color" style="width:52%;">木名</th><th style="width:18%;">操作</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th class="col-color" style="width:26%;">色號</th>
+                        <th class="col-color" style="width:36%;">木名</th>
+                        <th style="width:20%;">儲位</th>
+                        <th style="width:18%;">操作</th>
+                    </tr>
+                </thead>
                 <tbody id="catBody"></tbody>
             </table>
         </div>
@@ -165,14 +177,20 @@
             <input type="text" id="inCode" autocomplete="off" placeholder="打字搜尋預設 / 已建檔色號...">
             <div id="typeColorList" class="type-list"></div>
         </div>
-        <div class="field"><label>木名 *</label><input type="text" id="inWood" autocomplete="off" placeholder="例: 漢密爾頓橡木"></div>
+        <div class="row2">
+            <div class="field" style="flex:2;"><label>木名 *</label><input type="text" id="inWood" autocomplete="off" placeholder="例: 漢密爾頓橡木"></div>
+            <div class="field" style="flex:1;"><label>儲位</label><input type="text" id="inLoc" autocomplete="off" placeholder="例: A01"></div>
+        </div>
         <div class="row2">
             <div class="field"><label>Nesting 數</label><input type="number" id="inN" min="0" inputmode="numeric" autocomplete="off"></div>
             <div class="field"><label>電子鋸 數</label><input type="number" id="inS" min="0" inputmode="numeric" autocomplete="off"></div>
         </div>
-        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
-            <button type="button" id="btnCancelItem" class="btn btn-gray">取消</button>
-            <button type="button" id="btnConfirmItem" class="btn">確認儲存</button>
+        <div style="display:flex; gap:10px; justify-content:space-between; align-items:center; margin-top:14px;">
+            <button type="button" id="btnDeleteItem" class="btn btn-red" style="display:none; padding:10px 14px; font-size:14px;">🗑️ 刪除此筆</button>
+            <div style="display:flex; gap:10px; margin-left:auto;">
+                <button type="button" id="btnCancelItem" class="btn btn-gray">取消</button>
+                <button type="button" id="btnConfirmItem" class="btn">確認儲存</button>
+            </div>
         </div>
     </div>
 </div>
@@ -180,10 +198,10 @@
 <!-- 彈窗3：機台欄寬微調 -->
 <div id="widthModal" class="modal-bg">
     <div class="modal-card">
-        <h3 style="margin-top:0;">微調機台欄寬 (%)</h3>
+        <h3 style="margin-top:0;">微調欄位寬度 (%)</h3>
         <div class="row2">
             <div class="field"><label>色號/木名 (%)</label><input type="number" id="wColor" min="15" max="60" inputmode="numeric" autocomplete="off"></div>
-            <div class="field"><label>操作欄 (%)</label><input type="number" id="wAct" min="8" max="30" inputmode="numeric" autocomplete="off"></div>
+            <div class="field"><label>儲位 (%)</label><input type="number" id="wLoc" min="8" max="40" inputmode="numeric" autocomplete="off"></div>
         </div>
         <div class="row2">
             <div class="field"><label>Nesting (%)</label><input type="number" id="wM1" min="10" max="60" inputmode="numeric" autocomplete="off"></div>
@@ -212,8 +230,8 @@
     <div class="modal-card">
         <h3 style="margin-top:0;">新建色號清單</h3>
         <div class="field">
-            <label>每行一筆（可用空白、逗號或 Tab 分隔）</label>
-            <textarea id="modalCatList" rows="6" placeholder="H3303 漢密爾頓橡木&#10;701 雪白"></textarea>
+            <label>每行一筆（格式：色號 木名 [儲位]，用空白或逗號分隔）</label>
+            <textarea id="modalCatList" rows="6" placeholder="H3303 漢密爾頓橡木 A01&#10;701 雪白 B02"></textarea>
         </div>
         <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
             <button type="button" id="btnCancelCatList" class="btn btn-gray">取消</button>
@@ -238,16 +256,29 @@
 
 <script>
 const DEFAULT_CATALOG = {
-    'H3303': '漢密爾頓橡木',
-    '701': '雪白',
-    'U999': '炭黑',
-    'H1145': '巴登白橡',
-    'W1000': '尊貴白'
+    'H3303': { wood: '漢密爾頓橡木', loc: 'A01' },
+    '701': { wood: '雪白', loc: 'A02' },
+    'U999': { wood: '炭黑', loc: 'B01' },
+    'H1145': { wood: '巴登白橡', loc: 'B02' },
+    'W1000': { wood: '尊貴白', loc: 'C01' }
 };
 
+function normalizeCatalog(raw) {
+    const out = {};
+    if (!raw || typeof raw !== 'object') return out;
+    Object.entries(raw).forEach(([c, v]) => {
+        if (typeof v === 'string') {
+            out[c] = { wood: v, loc: '' };
+        } else if (v && typeof v === 'object') {
+            out[c] = { wood: v.wood || '', loc: v.loc || '' };
+        }
+    });
+    return out;
+}
+
 let db = {};
-let catalog = Object.assign({}, DEFAULT_CATALOG);
-let widths = { color: 32, m1: 27, m2: 27, act: 14 };
+let catalog = normalizeCatalog(DEFAULT_CATALOG);
+let widths = { color: 32, m1: 24, loc: 20, m2: 24 };
 let curId = null;
 let editItemIdx = null;
 let camStream = null;
@@ -261,13 +292,13 @@ try {
 try {
     const sCat = localStorage.getItem('boardSystemCatalog_v5');
     if (sCat) {
-        const parsed = JSON.parse(sCat);
-        if (parsed && Object.keys(parsed).length > 0) catalog = parsed;
+        const parsed = normalizeCatalog(JSON.parse(sCat));
+        if (Object.keys(parsed).length > 0) catalog = parsed;
     }
 } catch (e) {}
 
 try {
-    const sW = localStorage.getItem('boardSystemWidths_v5');
+    const sW = localStorage.getItem('boardSystemWidths_v6');
     if (sW) widths = Object.assign(widths, JSON.parse(sW));
 } catch (e) {}
 
@@ -275,15 +306,15 @@ function saveAll() {
     try {
         localStorage.setItem('boardSystemDB_v5', JSON.stringify(db));
         localStorage.setItem('boardSystemCatalog_v5', JSON.stringify(catalog));
-        localStorage.setItem('boardSystemWidths_v5', JSON.stringify(widths));
+        localStorage.setItem('boardSystemWidths_v6', JSON.stringify(widths));
     } catch (e) {}
 }
 
 function applyWidths() {
     document.getElementById('thColor').style.width = widths.color + '%';
     document.getElementById('thM1').style.width = widths.m1 + '%';
+    document.getElementById('thLoc').style.width = widths.loc + '%';
     document.getElementById('thM2').style.width = widths.m2 + '%';
-    document.getElementById('thAct').style.width = widths.act + '%';
 }
 
 function switchTab(tab) {
@@ -357,6 +388,11 @@ function backToList() {
     renderOrders();
 }
 
+function getItemLoc(it) {
+    if (catalog[it.code] && catalog[it.code].loc) return catalog[it.code].loc;
+    return it.loc || '';
+}
+
 function renderDetail() {
     const tbody = document.getElementById('detailBody');
     const items = (db[curId] && db[curId].items) || [];
@@ -366,13 +402,16 @@ function renderDetail() {
     items.forEach((it, idx) => {
         const nVal = Number(it.n) || 0;
         const sVal = Number(it.s) || 0;
+        const locVal = getItemLoc(it);
         nSum += nVal;
         sSum += sVal;
         const tr = document.createElement('tr');
 
         const tdColor = document.createElement('td');
-        tdColor.className = 'col-color';
+        tdColor.className = 'col-color color-edit-cell';
+        tdColor.title = '點選修改或刪除此色號';
         tdColor.innerHTML = '<span class="code-line">' + it.code + '</span><span class="wood-subline">' + it.wood + '</span>';
+        tdColor.onclick = () => openEditItemModal(idx);
 
         const tdN = document.createElement('td');
         tdN.innerHTML = '<strong>' + (nVal || '-') + '</strong>';
@@ -385,6 +424,9 @@ function renderDetail() {
             };
         }
 
+        const tdLoc = document.createElement('td');
+        tdLoc.innerHTML = locVal ? '<span class="loc-badge">' + locVal + '</span>' : '<span style="color:#94a3b8;">-</span>';
+
         const tdS = document.createElement('td');
         tdS.innerHTML = '<strong>' + (sVal || '-') + '</strong>';
         if (sVal > 0) {
@@ -396,40 +438,16 @@ function renderDetail() {
             };
         }
 
-        const tdAct = document.createElement('td');
-        const acts = document.createElement('div');
-        acts.className = 'row-acts';
-
-        const editBtn = document.createElement('button');
-        editBtn.type = 'button';
-        editBtn.className = 'btn btn-amber';
-        editBtn.textContent = '修改';
-        editBtn.onclick = () => openEditItemModal(idx);
-
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'btn btn-red';
-        delBtn.textContent = '刪除';
-        delBtn.onclick = () => {
-            db[curId].items.splice(idx, 1);
-            saveAll();
-            renderDetail();
-        };
-
-        acts.appendChild(editBtn);
-        acts.appendChild(delBtn);
-        tdAct.appendChild(acts);
-
         tr.appendChild(tdColor);
         tr.appendChild(tdN);
+        tr.appendChild(tdLoc);
         tr.appendChild(tdS);
-        tr.appendChild(tdAct);
         tbody.appendChild(tr);
     });
 
     const sumTr = document.createElement('tr');
     sumTr.className = 'sum-row';
-    sumTr.innerHTML = '<td class="col-color">合計</td><td>' + nSum + ' 片</td><td>' + sSum + ' 片</td><td></td>';
+    sumTr.innerHTML = '<td class="col-color">合計</td><td>' + nSum + ' 片</td><td></td><td>' + sSum + ' 片</td>';
     tbody.appendChild(sumTr);
 }
 
@@ -489,8 +507,10 @@ function confirmEditOrder() {
 function openItemModal() {
     editItemIdx = null;
     document.getElementById('itemModalTitle').textContent = '加入板材色號';
+    document.getElementById('btnDeleteItem').style.display = 'none';
     document.getElementById('inCode').value = '';
     document.getElementById('inWood').value = '';
+    document.getElementById('inLoc').value = '';
     document.getElementById('inN').value = '';
     document.getElementById('inS').value = '';
     document.getElementById('typeColorList').style.display = 'none';
@@ -503,13 +523,26 @@ function openEditItemModal(idx) {
     if (!it) return;
     editItemIdx = idx;
     document.getElementById('itemModalTitle').textContent = '修改板材色號與數量';
+    document.getElementById('btnDeleteItem').style.display = 'inline-block';
     document.getElementById('inCode').value = it.code;
     document.getElementById('inWood').value = it.wood;
+    document.getElementById('inLoc').value = getItemLoc(it);
     document.getElementById('inN').value = it.n || '';
     document.getElementById('inS').value = it.s || '';
     document.getElementById('typeColorList').style.display = 'none';
     document.getElementById('itemModal').style.display = 'flex';
     document.getElementById('inN').focus();
+}
+
+function deleteCurrentItem() {
+    if (editItemIdx === null || !curId || !db[curId]) return;
+    const it = db[curId].items[editItemIdx];
+    if (!it) return;
+    if (!confirm('確定要刪除「' + it.code + ' ' + it.wood + '」嗎？')) return;
+    db[curId].items.splice(editItemIdx, 1);
+    saveAll();
+    renderDetail();
+    closeItemModal();
 }
 
 function closeItemModal() {
@@ -525,21 +558,25 @@ function onTypeColor() {
         box.style.display = 'none';
         return;
     }
-    const matches = Object.entries(catalog).filter(([c, w]) =>
-        c.toLowerCase().includes(kw) || w.toLowerCase().includes(kw)
+    const matches = Object.entries(catalog).filter(([c, info]) =>
+        c.toLowerCase().includes(kw) ||
+        (info.wood || '').toLowerCase().includes(kw) ||
+        (info.loc || '').toLowerCase().includes(kw)
     );
     if (!matches.length) {
         box.style.display = 'none';
         return;
     }
     box.innerHTML = '';
-    matches.forEach(([c, w]) => {
+    matches.forEach(([c, info]) => {
         const div = document.createElement('div');
         div.className = 'type-item';
-        div.innerHTML = '<strong>' + c + '</strong><span style="color:#64748b;">' + w + '</span>';
+        const locTag = info.loc ? '<span class="loc-badge" style="font-size:11px; padding:1px 6px;">' + info.loc + '</span>' : '';
+        div.innerHTML = '<div><strong>' + c + '</strong> <span style="color:#64748b;">' + (info.wood || '') + '</span></div>' + locTag;
         div.onclick = () => {
             document.getElementById('inCode').value = c;
-            document.getElementById('inWood').value = w;
+            document.getElementById('inWood').value = info.wood || '';
+            document.getElementById('inLoc').value = info.loc || '';
             box.style.display = 'none';
             const inN = document.getElementById('inN');
             inN.focus();
@@ -554,22 +591,27 @@ function confirmItem() {
     if (!curId) return;
     const code = document.getElementById('inCode').value.trim();
     const wood = document.getElementById('inWood').value.trim();
+    const loc = document.getElementById('inLoc').value.trim();
     const n = Number(document.getElementById('inN').value) || 0;
     const s = Number(document.getElementById('inS').value) || 0;
     if (!code || !wood || (n === 0 && s === 0)) return alert('請填色號、木名與至少一邊數量');
-    catalog[code] = wood;
+
+    const prevCat = catalog[code] || {};
+    catalog[code] = { wood, loc: loc || prevCat.loc || '' };
+
     if (editItemIdx !== null && db[curId].items[editItemIdx]) {
         const old = db[curId].items[editItemIdx];
         db[curId].items[editItemIdx] = {
             code,
             wood,
+            loc: catalog[code].loc,
             n,
             s,
             nDone: n > 0 ? Boolean(old.nDone) : false,
             sDone: s > 0 ? Boolean(old.sDone) : false
         };
     } else {
-        db[curId].items.push({ code, wood, n, s, nDone: false, sDone: false });
+        db[curId].items.push({ code, wood, loc: catalog[code].loc, n, s, nDone: false, sDone: false });
     }
     saveAll();
     renderDetail();
@@ -579,8 +621,8 @@ function confirmItem() {
 function openWidthModal() {
     document.getElementById('wColor').value = widths.color;
     document.getElementById('wM1').value = widths.m1;
+    document.getElementById('wLoc').value = widths.loc;
     document.getElementById('wM2').value = widths.m2;
-    document.getElementById('wAct').value = widths.act;
     document.getElementById('widthModal').style.display = 'flex';
 }
 
@@ -591,9 +633,9 @@ function closeWidthModal() {
 function confirmWidths() {
     widths = {
         color: Number(document.getElementById('wColor').value) || 32,
-        m1: Number(document.getElementById('wM1').value) || 27,
-        m2: Number(document.getElementById('wM2').value) || 27,
-        act: Number(document.getElementById('wAct').value) || 14
+        m1: Number(document.getElementById('wM1').value) || 24,
+        loc: Number(document.getElementById('wLoc').value) || 20,
+        m2: Number(document.getElementById('wM2').value) || 24
     };
     applyWidths();
     saveAll();
@@ -614,8 +656,15 @@ function confirmCatalogList() {
     const lines = document.getElementById('modalCatList').value.trim().split(/\r?\n/);
     let n = 0;
     lines.forEach(line => {
-        const m = line.trim().match(/^([^\t,，\s]+)[\t,，\s]+(.+)$/);
-        if (m) { catalog[m[1].trim()] = m[2].trim(); n++; }
+        const parts = line.trim().split(/[\t,，\s]+/).filter(Boolean);
+        if (parts.length >= 2) {
+            const code = parts[0].trim();
+            const wood = parts[1].trim();
+            const loc = parts.slice(2).join(' ').trim();
+            const old = catalog[code] || {};
+            catalog[code] = { wood, loc: loc || old.loc || '' };
+            n++;
+        }
     });
     if (!n) return alert('沒有可匯入的資料');
     saveAll();
@@ -627,37 +676,51 @@ function confirmCatalogList() {
 function saveCatalogItem() {
     const c = document.getElementById('catCode').value.trim();
     const w = document.getElementById('catWood').value.trim();
+    const l = document.getElementById('catLoc').value.trim();
     if (!c || !w) return alert('請填寫色號與木名');
-    catalog[c] = w;
+    catalog[c] = { wood: w, loc: l };
     saveAll();
     document.getElementById('catCode').value = '';
     document.getElementById('catWood').value = '';
+    document.getElementById('catLoc').value = '';
     renderCatalog();
 }
 
 function renderCatalog() {
     const kw = document.getElementById('catSearch').value.trim().toLowerCase();
-    const entries = Object.entries(catalog).filter(([c, w]) =>
-        c.toLowerCase().includes(kw) || w.toLowerCase().includes(kw)
+    const entries = Object.entries(catalog).filter(([c, info]) =>
+        c.toLowerCase().includes(kw) ||
+        (info.wood || '').toLowerCase().includes(kw) ||
+        (info.loc || '').toLowerCase().includes(kw)
     );
     document.getElementById('catCount').textContent = Object.keys(catalog).length;
     const tbody = document.getElementById('catBody');
     tbody.innerHTML = '';
 
     if (!entries.length) {
-        tbody.innerHTML = '<tr><td colspan="3" style="color:#94a3b8;">尚無色號對照</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;">尚無色號對照</td></tr>';
         return;
     }
 
-    entries.forEach(([c, w]) => {
+    entries.forEach(([c, info]) => {
         const tr = document.createElement('tr');
         const tdC = document.createElement('td');
         tdC.className = 'col-color';
         tdC.innerHTML = '<strong>' + c + '</strong>';
+        tdC.style.cursor = 'pointer';
+        tdC.onclick = () => {
+            document.getElementById('catCode').value = c;
+            document.getElementById('catWood').value = info.wood || '';
+            document.getElementById('catLoc').value = info.loc || '';
+            document.getElementById('catLoc').focus();
+        };
 
         const tdW = document.createElement('td');
         tdW.className = 'col-color';
-        tdW.textContent = w;
+        tdW.textContent = info.wood || '';
+
+        const tdL = document.createElement('td');
+        tdL.innerHTML = info.loc ? '<span class="loc-badge">' + info.loc + '</span>' : '<span style="color:#94a3b8;">-</span>';
 
         const tdAct = document.createElement('td');
         const delBtn = document.createElement('button');
@@ -673,6 +736,7 @@ function renderCatalog() {
         tdAct.appendChild(delBtn);
         tr.appendChild(tdC);
         tr.appendChild(tdW);
+        tr.appendChild(tdL);
         tr.appendChild(tdAct);
         tbody.appendChild(tr);
     });
@@ -688,26 +752,26 @@ function dl(csv, name) {
 function exportCatalog() {
     const entries = Object.entries(catalog);
     if (!entries.length) return alert('無色號對照資料');
-    let csv = '\uFEFF色號,木名\n';
-    entries.forEach(([c, w]) => csv += '"' + c + '","' + w + '"\n');
+    let csv = '\uFEFF色號,木名,儲位\n';
+    entries.forEach(([c, info]) => csv += '"' + c + '","' + (info.wood || '') + '","' + (info.loc || '') + '"\n');
     dl(csv, '色號對照表.csv');
 }
 
 function exportOne() {
     const o = db[curId];
     if (!o || !o.items || !o.items.length) return alert('無資料');
-    let csv = '\uFEFF訂單號,案名,出貨日期,色號,木名,Nesting數量,電子鋸數量\n';
-    o.items.forEach(i => csv += '"' + curId + '","' + (o.project || '') + '","' + (o.date || '') + '","' + i.code + '","' + i.wood + '",' + (i.n || '') + ',' + (i.s || '') + '\n');
+    let csv = '\uFEFF訂單號,案名,出貨日期,色號,木名,儲位,Nesting數量,電子鋸數量\n';
+    o.items.forEach(i => csv += '"' + curId + '","' + (o.project || '') + '","' + (o.date || '') + '","' + i.code + '","' + i.wood + '","' + getItemLoc(i) + '",' + (i.n || '') + ',' + (i.s || '') + '\n');
     dl(csv, '訂單_' + curId + '.csv');
 }
 
 function exportAll() {
     const keys = Object.keys(db);
     if (!keys.length) return alert('無資料');
-    let csv = '\uFEFF訂單號,案名,出貨日期,色號,木名,Nesting數量,電子鋸數量\n';
+    let csv = '\uFEFF訂單號,案名,出貨日期,色號,木名,儲位,Nesting數量,電子鋸數量\n';
     keys.forEach(id => {
         const o = db[id] || {};
-        (o.items || []).forEach(i => csv += '"' + id + '","' + (o.project || '') + '","' + (o.date || '') + '","' + i.code + '","' + i.wood + '",' + (i.n || '') + ',' + (i.s || '') + '\n');
+        (o.items || []).forEach(i => csv += '"' + id + '","' + (o.project || '') + '","' + (o.date || '') + '","' + i.code + '","' + i.wood + '","' + getItemLoc(i) + '",' + (i.n || '') + ',' + (i.s || '') + '\n');
     });
     dl(csv, '全部訂單總表.csv');
 }
@@ -783,6 +847,7 @@ function closeCamModal() {
     ['btnOpenCam', openCamModal],
     ['btnCancelOrder', closeOrderModal],
     ['btnConfirmOrder', confirmOrder],
+    ['btnDeleteItem', deleteCurrentItem],
     ['btnCancelItem', closeItemModal],
     ['btnConfirmItem', confirmItem],
     ['btnCancelWidth', closeWidthModal],
