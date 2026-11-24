@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系統櫃訂單分板系統 - 核心版</title>
+    <title>系統櫃訂單分板系統</title>
     <style>
         * { box-sizing: border-box; font-family: sans-serif; }
         body { margin: 0; padding: 14px 12px; background: #eef2f6; color: #1f2937; }
@@ -43,8 +43,9 @@
         .tab.active { background: #1e3a8a; color: #fff; }
 
         .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
-        .order-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; cursor: pointer; }
+        .order-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; cursor: pointer; position: relative; }
         .order-box:hover { border-color: #2563eb; background: #eff6ff; }
+        .order-del-btn { position: absolute; top: 10px; right: 10px; background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
 
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th, td { padding: 11px 6px; border-bottom: 1px solid #e2e8f0; text-align: center; font-size: 15px; vertical-align: middle; word-break: break-word; }
@@ -151,8 +152,9 @@
                 <thead>
                     <tr>
                         <th class="col-color" style="width:26%;">色號</th>
-                        <th class="col-color" style="width:44%;">木名</th>
-                        <th style="width:30%;">儲位</th>
+                        <th class="col-color" style="width:36%;">木名</th>
+                        <th style="width:20%;">儲位</th>
+                        <th style="width:18%;">操作</th>
                     </tr>
                 </thead>
                 <tbody id="catBody"></tbody>
@@ -241,6 +243,63 @@ var widths = { color: 32, m1: 24, loc: 20, m2: 24 };
 var curId = null;
 var editIdx = null;
 
+function normalizeCatalog(raw) {
+    var out = {};
+    if (!raw || typeof raw !== 'object') return out;
+    Object.keys(raw).forEach(function(c) {
+        var v = raw[c];
+        if (typeof v === 'string') out[c] = { wood: v, loc: '' };
+        else if (v && typeof v === 'object') out[c] = { wood: v.wood || '', loc: v.loc || '' };
+    });
+    return out;
+}
+
+function loadStorage() {
+    try {
+        var rawDb = localStorage.getItem('boardSystemDB_v5');
+        if (rawDb) {
+            var parsedDb = JSON.parse(rawDb);
+            if (parsedDb && typeof parsedDb === 'object') db = parsedDb;
+        }
+    } catch (e) {}
+
+    try {
+        var rawCat = localStorage.getItem('boardSystemCatalog_v5');
+        if (rawCat) {
+            var parsedCat = normalizeCatalog(JSON.parse(rawCat));
+            if (Object.keys(parsedCat).length > 0) catalog = parsedCat;
+        }
+    } catch (e) {}
+
+    try {
+        var rawW = localStorage.getItem('boardSystemWidths_v6');
+        if (rawW) {
+            var parsedW = JSON.parse(rawW);
+            if (parsedW && typeof parsedW === 'object') {
+                if (parsedW.color) widths.color = Number(parsedW.color);
+                if (parsedW.m1) widths.m1 = Number(parsedW.m1);
+                if (parsedW.loc) widths.loc = Number(parsedW.loc);
+                if (parsedW.m2) widths.m2 = Number(parsedW.m2);
+            }
+        }
+    } catch (e) {}
+}
+
+function saveStorage() {
+    try {
+        localStorage.setItem('boardSystemDB_v5', JSON.stringify(db));
+        localStorage.setItem('boardSystemCatalog_v5', JSON.stringify(catalog));
+        localStorage.setItem('boardSystemWidths_v6', JSON.stringify(widths));
+    } catch (e) {}
+}
+
+function applyWidths() {
+    document.getElementById('thColor').style.width = widths.color + '%';
+    document.getElementById('thLoc').style.width = widths.loc + '%';
+    document.getElementById('thM1').style.width = widths.m1 + '%';
+    document.getElementById('thM2').style.width = widths.m2 + '%';
+}
+
 function switchTab(t) {
     document.getElementById('secOrders').style.display = t === 'orders' ? 'block' : 'none';
     document.getElementById('secCatalog').style.display = t === 'catalog' ? 'block' : 'none';
@@ -252,19 +311,47 @@ function switchTab(t) {
 
 function renderOrders() {
     var wrap = document.getElementById('orderList');
-    var keys = Object.keys(db);
+    var keys = Object.keys(db).reverse();
     if (!keys.length) {
         wrap.innerHTML = '<div style="color:#64748b;">尚無訂單，點「+ 新建訂單」開始。</div>';
         return;
     }
     wrap.innerHTML = '';
     keys.forEach(function(id) {
-        var o = db[id];
+        var o = db[id] || { items: [] };
+        var nSum = 0, sSum = 0;
+        (o.items || []).forEach(function(it) {
+            nSum += Number(it.n) || 0;
+            sSum += Number(it.s) || 0;
+        });
+
         var box = document.createElement('div');
         box.className = 'order-box';
-        box.innerHTML = '<div style="font-weight:800; color:#1e3a8a; font-size:16px;">' + id + '</div>' +
-            '<div style="font-size:13px; color:#475569; margin-top:4px;">案名：' + (o.project || '未命名') + '｜出貨：' + (o.date || '未定') + '</div>';
         box.onclick = function() { openDetail(id); };
+
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'order-del-btn';
+        delBtn.textContent = '刪除';
+        delBtn.onclick = function(ev) {
+            if (ev && ev.stopPropagation) ev.stopPropagation();
+            if (!confirm('確定要刪除訂單「' + id + '」嗎？')) return;
+            delete db[id];
+            saveStorage();
+            renderOrders();
+        };
+
+        var titleDiv = document.createElement('div');
+        titleDiv.style.cssText = 'font-weight:800; color:#1e3a8a; font-size:16px; padding-right:44px;';
+        titleDiv.textContent = id;
+
+        var infoDiv = document.createElement('div');
+        infoDiv.style.cssText = 'font-size:13px; color:#475569; margin-top:4px; line-height:1.45;';
+        infoDiv.innerHTML = '案名：' + (o.project || '未命名') + '｜出貨：' + (o.date || '未定') + '<br>Nesting：<strong>' + nSum + '</strong>｜電子鋸：<strong>' + sSum + '</strong>';
+
+        box.appendChild(delBtn);
+        box.appendChild(titleDiv);
+        box.appendChild(infoDiv);
         wrap.appendChild(box);
     });
 }
@@ -307,7 +394,11 @@ function renderDetail() {
         tdN.innerHTML = '<strong>' + (nVal || '-') + '</strong>';
         if (nVal > 0) {
             tdN.className = it.nDone ? 'prep-cell prep-done' : 'prep-cell';
-            tdN.onclick = function() { it.nDone = !it.nDone; renderDetail(); };
+            tdN.onclick = function() {
+                it.nDone = !it.nDone;
+                saveStorage();
+                renderDetail();
+            };
         }
 
         var tdL = document.createElement('td');
@@ -317,7 +408,11 @@ function renderDetail() {
         tdS.innerHTML = '<strong>' + (sVal || '-') + '</strong>';
         if (sVal > 0) {
             tdS.className = it.sDone ? 'prep-cell prep-done' : 'prep-cell';
-            tdS.onclick = function() { it.sDone = !it.sDone; renderDetail(); };
+            tdS.onclick = function() {
+                it.sDone = !it.sDone;
+                saveStorage();
+                renderDetail();
+            };
         }
 
         tr.appendChild(tdC);
@@ -355,9 +450,42 @@ function renderCatalog() {
     keys.forEach(function(c) {
         var info = catalog[c];
         var tr = document.createElement('tr');
-        tr.innerHTML = '<td class="col-color"><strong>' + c + '</strong></td>' +
-            '<td class="col-color">' + info.wood + '</td>' +
-            '<td>' + (info.loc ? '<span class="loc-badge">' + info.loc + '</span>' : '-') + '</td>';
+
+        var tdC = document.createElement('td');
+        tdC.className = 'col-color';
+        tdC.style.cursor = 'pointer';
+        tdC.innerHTML = '<strong>' + c + '</strong>';
+        tdC.onclick = function() {
+            document.getElementById('catCode').value = c;
+            document.getElementById('catWood').value = info.wood || '';
+            document.getElementById('catLoc').value = info.loc || '';
+            document.getElementById('catLoc').focus();
+        };
+
+        var tdW = document.createElement('td');
+        tdW.className = 'col-color';
+        tdW.textContent = info.wood || '';
+
+        var tdL = document.createElement('td');
+        tdL.innerHTML = info.loc ? '<span class="loc-badge">' + info.loc + '</span>' : '-';
+
+        var tdAct = document.createElement('td');
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn btn-red';
+        delBtn.style.cssText = 'padding:5px 9px; font-size:12px;';
+        delBtn.textContent = '刪除';
+        delBtn.onclick = function() {
+            delete catalog[c];
+            saveStorage();
+            renderCatalog();
+        };
+        tdAct.appendChild(delBtn);
+
+        tr.appendChild(tdC);
+        tr.appendChild(tdW);
+        tr.appendChild(tdL);
+        tr.appendChild(tdAct);
         tbody.appendChild(tr);
     });
 }
@@ -377,11 +505,17 @@ document.getElementById('btnCancelOrder').onclick = function() {
 document.getElementById('btnConfirmOrder').onclick = function() {
     var id = document.getElementById('inOrderId').value.trim();
     if (!id) return alert('請輸入訂單號');
-    db[id] = {
-        project: document.getElementById('inProject').value.trim(),
-        date: document.getElementById('inDate').value,
-        items: []
-    };
+    if (!db[id]) {
+        db[id] = {
+            project: document.getElementById('inProject').value.trim(),
+            date: document.getElementById('inDate').value,
+            items: []
+        };
+    } else {
+        db[id].project = document.getElementById('inProject').value.trim();
+        db[id].date = document.getElementById('inDate').value;
+    }
+    saveStorage();
     document.getElementById('orderModal').style.display = 'none';
     openDetail(id);
 };
@@ -406,6 +540,7 @@ document.getElementById('btnConfirmEditOrder').onclick = function() {
     if (!curId || !db[curId]) return;
     db[curId].project = document.getElementById('editProject').value.trim();
     db[curId].date = document.getElementById('editDate').value;
+    saveStorage();
     renderDetailHeader(curId, db[curId]);
     document.getElementById('editOrderModal').style.display = 'none';
 };
@@ -436,6 +571,7 @@ document.getElementById('btnDeleteItem').onclick = function() {
     if (editIdx === null || !curId || !db[curId]) return;
     db[curId].items.splice(editIdx, 1);
     editIdx = null;
+    saveStorage();
     document.getElementById('itemModal').style.display = 'none';
     renderDetail();
 };
@@ -462,6 +598,7 @@ document.getElementById('btnConfirmItem').onclick = function() {
         db[curId].items.push({ code: code, wood: wood, loc: finalLoc, n: n, s: s, nDone: false, sDone: false });
     }
     editIdx = null;
+    saveStorage();
     document.getElementById('itemModal').style.display = 'none';
     renderDetail();
 };
@@ -472,6 +609,7 @@ document.getElementById('btnSaveCat').onclick = function() {
     var l = document.getElementById('catLoc').value.trim();
     if (!c || !w) return alert('請填寫色號與木名');
     catalog[c] = { wood: w, loc: l };
+    saveStorage();
     document.getElementById('catCode').value = '';
     document.getElementById('catWood').value = '';
     document.getElementById('catLoc').value = '';
@@ -502,10 +640,8 @@ try {
         widths.loc = Number(document.getElementById('wLoc').value) || 20;
         widths.m1 = Number(document.getElementById('wM1').value) || 24;
         widths.m2 = Number(document.getElementById('wM2').value) || 24;
-        document.getElementById('thColor').style.width = widths.color + '%';
-        document.getElementById('thLoc').style.width = widths.loc + '%';
-        document.getElementById('thM1').style.width = widths.m1 + '%';
-        document.getElementById('thM2').style.width = widths.m2 + '%';
+        applyWidths();
+        saveStorage();
         document.getElementById('widthModal').style.display = 'none';
     };
 } catch (e) {}
@@ -553,6 +689,8 @@ try {
     };
 } catch (e) {}
 
+loadStorage();
+applyWidths();
 renderOrders();
 </script>
 </body>
