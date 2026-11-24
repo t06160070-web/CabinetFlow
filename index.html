@@ -85,8 +85,8 @@
                     <button type="button" id="btnNewOrder" class="btn btn-primary-mobile">+ 新建訂單</button>
                 </div>
                 <div class="header-row-tools tools-pair-mobile">
-                    <button type="button" id="btnWidthList" class="btn-sub">機台欄寬（下一步）</button>
-                    <button type="button" id="btnExportAll" class="btn-sub">匯出 CSV（下一步）</button>
+                    <button type="button" id="btnWidthList" class="btn-sub">機台欄寬</button>
+                    <button type="button" id="btnExportAll" class="btn-sub">匯出全部 CSV</button>
                 </div>
             </div>
             <div class="card">
@@ -111,16 +111,20 @@
                 </div>
                 <div class="header-row-main">
                     <button type="button" id="btnAddItem" class="btn btn-primary-mobile">+ 加入色號</button>
+                    <div class="header-row-tools tools-pair-mobile">
+                        <button type="button" id="btnWidthDetail" class="btn-sub">機台欄寬</button>
+                        <button type="button" id="btnExportOne" class="btn-sub">匯出此單 CSV</button>
+                    </div>
                 </div>
             </div>
             <div class="card" style="padding:0; overflow-x:auto;">
                 <table>
                     <thead>
                         <tr>
-                            <th class="col-color" style="width:32%;">色號 / 木名</th>
-                            <th class="th-m1" style="width:24%;">Nesting 數量</th>
-                            <th class="th-loc" style="width:20%;">儲位</th>
-                            <th class="th-m2" style="width:24%;">電子鋸 數量</th>
+                            <th id="thColor" class="col-color" style="width:32%;">色號 / 木名</th>
+                            <th id="thM1" class="th-m1" style="width:24%;">Nesting 數量</th>
+                            <th id="thLoc" class="th-loc" style="width:20%;">儲位</th>
+                            <th id="thM2" class="th-m2" style="width:24%;">電子鋸 數量</th>
                         </tr>
                     </thead>
                     <tbody id="detailBody"></tbody>
@@ -207,6 +211,25 @@
     </div>
 </div>
 
+<!-- 彈窗4：機台欄寬微調 -->
+<div id="widthModal" class="modal-bg">
+    <div class="modal-card">
+        <h3 style="margin-top:0;">微調欄位寬度 (%)</h3>
+        <div class="row2">
+            <div class="field"><label>色號/木名 (%)</label><input type="number" id="wColor" min="15" max="60" inputmode="numeric"></div>
+            <div class="field"><label>儲位 (%)</label><input type="number" id="wLoc" min="8" max="40" inputmode="numeric"></div>
+        </div>
+        <div class="row2">
+            <div class="field"><label>Nesting (%)</label><input type="number" id="wM1" min="10" max="60" inputmode="numeric"></div>
+            <div class="field"><label>電子鋸 (%)</label><input type="number" id="wM2" min="10" max="60" inputmode="numeric"></div>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" id="btnCancelWidth" class="btn btn-gray">取消</button>
+            <button type="button" id="btnConfirmWidth" class="btn">套用</button>
+        </div>
+    </div>
+</div>
+
 <script>
 var db = {};
 var catalog = {
@@ -214,8 +237,16 @@ var catalog = {
     '701': { wood: '雪白', loc: 'A02' },
     'U999': { wood: '炭黑', loc: 'B01' }
 };
+var widths = { color: 32, m1: 24, loc: 20, m2: 24 };
 var curId = null;
 var editIdx = null;
+
+function applyWidths() {
+    document.getElementById('thColor').style.width = widths.color + '%';
+    document.getElementById('thM1').style.width = widths.m1 + '%';
+    document.getElementById('thLoc').style.width = widths.loc + '%';
+    document.getElementById('thM2').style.width = widths.m2 + '%';
+}
 
 function switchTab(t) {
     document.getElementById('secOrders').style.display = t === 'orders' ? 'block' : 'none';
@@ -298,163 +329,4 @@ function renderDetail() {
 
         tr.appendChild(tdC);
         tr.appendChild(tdN);
-        tr.appendChild(tdL);
-        tr.appendChild(tdS);
-        tbody.appendChild(tr);
-    });
-
-    var sumTr = document.createElement('tr');
-    sumTr.className = 'sum-row';
-    sumTr.innerHTML = '<td class="col-color">合計</td><td>' + nSum + ' 片</td><td></td><td>' + sSum + ' 片</td>';
-    tbody.appendChild(sumTr);
-}
-
-function openEditItem(idx) {
-    var it = db[curId].items[idx];
-    if (!it) return;
-    editIdx = idx;
-    document.getElementById('itemModalTitle').textContent = '修改板材色號與數量';
-    document.getElementById('btnDeleteItem').style.display = 'inline-block';
-    document.getElementById('inCode').value = it.code;
-    document.getElementById('inWood').value = it.wood;
-    document.getElementById('inLoc').value = (catalog[it.code] && catalog[it.code].loc) || it.loc || '';
-    document.getElementById('inN').value = it.n || '';
-    document.getElementById('inS').value = it.s || '';
-    document.getElementById('itemModal').style.display = 'flex';
-}
-
-function renderCatalog() {
-    var keys = Object.keys(catalog);
-    document.getElementById('catCount').textContent = keys.length;
-    var tbody = document.getElementById('catBody');
-    tbody.innerHTML = '';
-    keys.forEach(function(c) {
-        var info = catalog[c];
-        var tr = document.createElement('tr');
-        tr.innerHTML = '<td class="col-color"><strong>' + c + '</strong></td>' +
-            '<td class="col-color">' + info.wood + '</td>' +
-            '<td>' + (info.loc ? '<span class="loc-badge">' + info.loc + '</span>' : '-') + '</td>';
-        tbody.appendChild(tr);
-    });
-}
-
-document.getElementById('tabOrders').onclick = function() { switchTab('orders'); };
-document.getElementById('tabCatalog').onclick = function() { switchTab('catalog'); };
-
-document.getElementById('btnNewOrder').onclick = function() {
-    document.getElementById('inOrderId').value = '';
-    document.getElementById('inProject').value = '';
-    document.getElementById('inDate').value = '';
-    document.getElementById('orderModal').style.display = 'flex';
-};
-document.getElementById('btnCancelOrder').onclick = function() {
-    document.getElementById('orderModal').style.display = 'none';
-};
-document.getElementById('btnConfirmOrder').onclick = function() {
-    var id = document.getElementById('inOrderId').value.trim();
-    if (!id) return alert('請輸入訂單號');
-    db[id] = {
-        project: document.getElementById('inProject').value.trim(),
-        date: document.getElementById('inDate').value,
-        items: []
-    };
-    document.getElementById('orderModal').style.display = 'none';
-    openDetail(id);
-};
-
-document.getElementById('btnBack').onclick = function() {
-    curId = null;
-    document.getElementById('detailView').style.display = 'none';
-    document.getElementById('listView').style.display = 'block';
-    renderOrders();
-};
-
-document.getElementById('btnEditOrder').onclick = function() {
-    if (!curId || !db[curId]) return;
-    document.getElementById('editProject').value = db[curId].project || '';
-    document.getElementById('editDate').value = db[curId].date || '';
-    document.getElementById('editOrderModal').style.display = 'flex';
-};
-document.getElementById('btnCancelEditOrder').onclick = function() {
-    document.getElementById('editOrderModal').style.display = 'none';
-};
-document.getElementById('btnConfirmEditOrder').onclick = function() {
-    if (!curId || !db[curId]) return;
-    db[curId].project = document.getElementById('editProject').value.trim();
-    db[curId].date = document.getElementById('editDate').value;
-    renderDetailHeader(curId, db[curId]);
-    document.getElementById('editOrderModal').style.display = 'none';
-};
-
-document.getElementById('btnAddItem').onclick = function() {
-    editIdx = null;
-    document.getElementById('itemModalTitle').textContent = '加入板材色號';
-    document.getElementById('btnDeleteItem').style.display = 'none';
-    document.getElementById('inCode').value = '';
-    document.getElementById('inWood').value = '';
-    document.getElementById('inLoc').value = '';
-    document.getElementById('inN').value = '';
-    document.getElementById('inS').value = '';
-    document.getElementById('itemModal').style.display = 'flex';
-};
-document.getElementById('inCode').oninput = function() {
-    var val = this.value.trim();
-    if (catalog[val]) {
-        document.getElementById('inWood').value = catalog[val].wood;
-        document.getElementById('inLoc').value = catalog[val].loc;
-    }
-};
-document.getElementById('btnCancelItem').onclick = function() {
-    editIdx = null;
-    document.getElementById('itemModal').style.display = 'none';
-};
-document.getElementById('btnDeleteItem').onclick = function() {
-    if (editIdx === null || !curId || !db[curId]) return;
-    db[curId].items.splice(editIdx, 1);
-    editIdx = null;
-    document.getElementById('itemModal').style.display = 'none';
-    renderDetail();
-};
-document.getElementById('btnConfirmItem').onclick = function() {
-    if (!curId || !db[curId]) return;
-    var code = document.getElementById('inCode').value.trim();
-    var wood = document.getElementById('inWood').value.trim();
-    var loc = document.getElementById('inLoc').value.trim();
-    var n = Number(document.getElementById('inN').value) || 0;
-    var s = Number(document.getElementById('inS').value) || 0;
-    if (!code || !wood || (n === 0 && s === 0)) return alert('請填色號、木名與至少一邊數量');
-
-    var finalLoc = loc || (catalog[code] && catalog[code].loc) || '';
-    catalog[code] = { wood: wood, loc: finalLoc };
-
-    if (editIdx !== null && db[curId].items[editIdx]) {
-        var old = db[curId].items[editIdx];
-        db[curId].items[editIdx] = {
-            code: code, wood: wood, loc: finalLoc, n: n, s: s,
-            nDone: n > 0 ? Boolean(old.nDone) : false,
-            sDone: s > 0 ? Boolean(old.sDone) : false
-        };
-    } else {
-        db[curId].items.push({ code: code, wood: wood, loc: finalLoc, n: n, s: s, nDone: false, sDone: false });
-    }
-    editIdx = null;
-    document.getElementById('itemModal').style.display = 'none';
-    renderDetail();
-};
-
-document.getElementById('btnSaveCat').onclick = function() {
-    var c = document.getElementById('catCode').value.trim();
-    var w = document.getElementById('catWood').value.trim();
-    var l = document.getElementById('catLoc').value.trim();
-    if (!c || !w) return alert('請填寫色號與木名');
-    catalog[c] = { wood: w, loc: l };
-    document.getElementById('catCode').value = '';
-    document.getElementById('catWood').value = '';
-    document.getElementById('catLoc').value = '';
-    renderCatalog();
-};
-
-renderOrders();
-</script>
-</body>
-</html>
+        tr
