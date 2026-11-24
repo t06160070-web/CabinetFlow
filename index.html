@@ -71,15 +71,6 @@
         textarea { min-height: 110px; font-size: 14px; line-height: 1.45; resize: vertical; }
         .row2 { display: flex; gap: 10px; }
         .catalog-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-
-        .suggest-box { display: none; flex-direction: column; gap: 5px; margin-top: 4px; }
-        .suggest-btn {
-            display: flex; justify-content: space-between; align-items: center; gap: 8px;
-            width: 100%; text-align: left; padding: 8px 10px; border-radius: 7px;
-            border: 1px solid #cbd5e1; background: #f8fafc; color: #1e293b;
-            font-size: 13.5px; cursor: pointer;
-        }
-        .suggest-btn:hover { background: #eff6ff; border-color: #2563eb; }
     </style>
 </head>
 <body>
@@ -147,10 +138,7 @@
 
     <div id="secCatalog" style="display:none;">
         <div class="card">
-            <div class="top-bar" style="margin-bottom:10px;">
-                <h3 style="margin:0;">新增 / 修改 色號對照</h3>
-                <button type="button" id="btnSeedCatalog" class="btn-sub">載入預設色號</button>
-            </div>
+            <h3 style="margin-top:0;">新增 / 修改 色號對照</h3>
             <div class="row2" style="flex-wrap:wrap;">
                 <div class="field"><label>色號 *</label><input type="text" id="catCode" placeholder="例: H3303"></div>
                 <div class="field"><label>木名 *</label><input type="text" id="catWood" placeholder="例: 漢密爾頓橡木"></div>
@@ -227,9 +215,8 @@
     <div class="modal-card">
         <h3 id="itemModalTitle" style="margin-top:0;">加入板材色號</h3>
         <div class="field">
-            <label>色號 / 木名 / 儲位關鍵字 *</label>
-            <input type="text" id="inCode" autocomplete="off" placeholder="輸入色號、木名或儲位...">
-            <div id="codeSuggestBox" class="suggest-box"></div>
+            <label>色號 *</label>
+            <input type="text" id="inCode" autocomplete="off" placeholder="輸入色號（例: H3303、701、U999）">
         </div>
         <div class="row2">
             <div class="field" style="flex:2;"><label>木名 *</label><input type="text" id="inWood" autocomplete="off" placeholder="例: 漢密爾頓橡木"></div>
@@ -269,11 +256,6 @@
 </div>
 
 <script>
-var DEFAULT_CATALOG = {
-    'H3303': { wood: '漢密爾頓橡木', loc: 'A01' },
-    '701': { wood: '雪白', loc: 'A02' },
-    'U999': { wood: '炭黑', loc: 'B01' }
-};
 var db = {};
 var catalog = {
     'H3303': { wood: '漢密爾頓橡木', loc: 'A01' },
@@ -369,3 +351,438 @@ function renderOrders() {
         var box = document.createElement('div');
         box.className = 'order-box';
         box.onclick = function() { openDetail(id); };
+
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'order-del-btn';
+        delBtn.textContent = '刪除';
+        delBtn.onclick = function(ev) {
+            if (ev && ev.stopPropagation) ev.stopPropagation();
+            if (!confirm('確定要刪除訂單「' + id + '」嗎？')) return;
+            delete db[id];
+            saveStorage();
+            renderOrders();
+        };
+
+        var titleDiv = document.createElement('div');
+        titleDiv.style.cssText = 'font-weight:800; color:#1e3a8a; font-size:16px; padding-right:44px;';
+        titleDiv.textContent = id;
+
+        var infoDiv = document.createElement('div');
+        infoDiv.style.cssText = 'font-size:13px; color:#475569; margin-top:4px; line-height:1.45;';
+        infoDiv.innerHTML = '案名：' + (o.project || '未命名') + '｜出貨：' + (o.date || '未定') + '<br>Nesting：<strong>' + nSum + '</strong>｜電子鋸：<strong>' + sSum + '</strong>';
+
+        box.appendChild(delBtn);
+        box.appendChild(titleDiv);
+        box.appendChild(infoDiv);
+        wrap.appendChild(box);
+    });
+}
+
+function renderDetailHeader(id, o) {
+    document.getElementById('detailOrderId').textContent = id;
+    document.getElementById('detailProject').textContent = '案名：' + (o.project || '未命名');
+    document.getElementById('detailDate').textContent = '出貨：' + (o.date || '未定');
+}
+
+function openDetail(id) {
+    curId = id;
+    document.getElementById('listView').style.display = 'none';
+    document.getElementById('detailView').style.display = 'block';
+    renderDetailHeader(id, db[id]);
+    renderDetail();
+}
+
+function renderDetail() {
+    var tbody = document.getElementById('detailBody');
+    var items = (db[curId] && db[curId].items) || [];
+    var nSum = 0, sSum = 0;
+    tbody.innerHTML = '';
+
+    items.forEach(function(it, idx) {
+        var nVal = Number(it.n) || 0;
+        var sVal = Number(it.s) || 0;
+        var locVal = (catalog[it.code] && catalog[it.code].loc) || it.loc || '';
+        nSum += nVal;
+        sSum += sVal;
+
+        var tr = document.createElement('tr');
+
+        var tdC = document.createElement('td');
+        tdC.className = 'col-color color-edit-cell';
+        tdC.innerHTML = '<span class="code-line">' + it.code + '</span><span class="wood-subline">' + it.wood + '</span>';
+        tdC.onclick = function() { openEditItem(idx); };
+
+        var tdN = document.createElement('td');
+        tdN.innerHTML = '<strong>' + (nVal || '-') + '</strong>';
+        if (nVal > 0) {
+            tdN.className = it.nDone ? 'prep-cell prep-done' : 'prep-cell';
+            tdN.onclick = function() {
+                it.nDone = !it.nDone;
+                saveStorage();
+                renderDetail();
+            };
+        }
+
+        var tdL = document.createElement('td');
+        tdL.innerHTML = locVal ? '<span class="loc-badge">' + locVal + '</span>' : '-';
+
+        var tdS = document.createElement('td');
+        tdS.innerHTML = '<strong>' + (sVal || '-') + '</strong>';
+        if (sVal > 0) {
+            tdS.className = it.sDone ? 'prep-cell prep-done' : 'prep-cell';
+            tdS.onclick = function() {
+                it.sDone = !it.sDone;
+                saveStorage();
+                renderDetail();
+            };
+        }
+
+        tr.appendChild(tdC);
+        tr.appendChild(tdN);
+        tr.appendChild(tdL);
+        tr.appendChild(tdS);
+        tbody.appendChild(tr);
+    });
+
+    var sumTr = document.createElement('tr');
+    sumTr.className = 'sum-row';
+    sumTr.innerHTML = '<td class="col-color">合計</td><td>' + nSum + ' 片</td><td></td><td>' + sSum + ' 片</td>';
+    tbody.appendChild(sumTr);
+}
+
+function openEditItem(idx) {
+    var it = db[curId].items[idx];
+    if (!it) return;
+    editIdx = idx;
+    document.getElementById('itemModalTitle').textContent = '修改板材色號與數量';
+    document.getElementById('btnDeleteItem').style.display = 'inline-block';
+    document.getElementById('inCode').value = it.code;
+    document.getElementById('inWood').value = it.wood;
+    document.getElementById('inLoc').value = (catalog[it.code] && catalog[it.code].loc) || it.loc || '';
+    document.getElementById('inN').value = it.n || '';
+    document.getElementById('inS').value = it.s || '';
+    document.getElementById('itemModal').style.display = 'flex';
+}
+
+function renderCatalog() {
+    var searchEl = document.getElementById('catSearch');
+    var kw = searchEl ? (searchEl.value || '').trim().toLowerCase() : '';
+    var keys = Object.keys(catalog).filter(function(c) {
+        if (!kw) return true;
+        var info = catalog[c] || {};
+        return c.toLowerCase().indexOf(kw) !== -1 ||
+            (info.wood || '').toLowerCase().indexOf(kw) !== -1 ||
+            (info.loc || '').toLowerCase().indexOf(kw) !== -1;
+    });
+
+    document.getElementById('catCount').textContent = kw ? (keys.length + ' / ' + Object.keys(catalog).length) : keys.length;
+    var tbody = document.getElementById('catBody');
+    tbody.innerHTML = '';
+
+    if (!keys.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:#64748b; padding:18px;">找不到符合的色號</td></tr>';
+        return;
+    }
+
+    keys.forEach(function(c) {
+        var info = catalog[c];
+        var tr = document.createElement('tr');
+
+        var tdC = document.createElement('td');
+        tdC.className = 'col-color';
+        tdC.style.cursor = 'pointer';
+        tdC.innerHTML = '<strong>' + c + '</strong>';
+        tdC.onclick = function() {
+            document.getElementById('catCode').value = c;
+            document.getElementById('catWood').value = info.wood || '';
+            document.getElementById('catLoc').value = info.loc || '';
+            document.getElementById('catLoc').focus();
+        };
+
+        var tdW = document.createElement('td');
+        tdW.className = 'col-color';
+        tdW.textContent = info.wood || '';
+
+        var tdL = document.createElement('td');
+        tdL.innerHTML = info.loc ? '<span class="loc-badge">' + info.loc + '</span>' : '-';
+
+        var tdAct = document.createElement('td');
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn btn-red';
+        delBtn.style.cssText = 'padding:5px 9px; font-size:12px;';
+        delBtn.textContent = '刪除';
+        delBtn.onclick = function() {
+            delete catalog[c];
+            saveStorage();
+            renderCatalog();
+        };
+        tdAct.appendChild(delBtn);
+
+        tr.appendChild(tdC);
+        tr.appendChild(tdW);
+        tr.appendChild(tdL);
+        tr.appendChild(tdAct);
+        tbody.appendChild(tr);
+    });
+}
+
+document.getElementById('tabOrders').onclick = function() { switchTab('orders'); };
+document.getElementById('tabCatalog').onclick = function() { switchTab('catalog'); };
+
+document.getElementById('btnNewOrder').onclick = function() {
+    document.getElementById('inOrderId').value = '';
+    document.getElementById('inProject').value = '';
+    document.getElementById('inDate').value = '';
+    document.getElementById('orderModal').style.display = 'flex';
+};
+document.getElementById('btnCancelOrder').onclick = function() {
+    document.getElementById('orderModal').style.display = 'none';
+};
+document.getElementById('btnConfirmOrder').onclick = function() {
+    var id = document.getElementById('inOrderId').value.trim();
+    if (!id) return alert('請輸入訂單號');
+    if (!db[id]) {
+        db[id] = {
+            project: document.getElementById('inProject').value.trim(),
+            date: document.getElementById('inDate').value,
+            items: []
+        };
+    } else {
+        db[id].project = document.getElementById('inProject').value.trim();
+        db[id].date = document.getElementById('inDate').value;
+    }
+    saveStorage();
+    document.getElementById('orderModal').style.display = 'none';
+    openDetail(id);
+};
+
+document.getElementById('btnBack').onclick = function() {
+    curId = null;
+    document.getElementById('detailView').style.display = 'none';
+    document.getElementById('listView').style.display = 'block';
+    renderOrders();
+};
+
+document.getElementById('btnEditOrder').onclick = function() {
+    if (!curId || !db[curId]) return;
+    document.getElementById('editProject').value = db[curId].project || '';
+    document.getElementById('editDate').value = db[curId].date || '';
+    document.getElementById('editOrderModal').style.display = 'flex';
+};
+document.getElementById('btnCancelEditOrder').onclick = function() {
+    document.getElementById('editOrderModal').style.display = 'none';
+};
+document.getElementById('btnConfirmEditOrder').onclick = function() {
+    if (!curId || !db[curId]) return;
+    db[curId].project = document.getElementById('editProject').value.trim();
+    db[curId].date = document.getElementById('editDate').value;
+    saveStorage();
+    renderDetailHeader(curId, db[curId]);
+    document.getElementById('editOrderModal').style.display = 'none';
+};
+
+document.getElementById('btnAddItem').onclick = function() {
+    editIdx = null;
+    document.getElementById('itemModalTitle').textContent = '加入板材色號';
+    document.getElementById('btnDeleteItem').style.display = 'none';
+    document.getElementById('inCode').value = '';
+    document.getElementById('inWood').value = '';
+    document.getElementById('inLoc').value = '';
+    document.getElementById('inN').value = '';
+    document.getElementById('inS').value = '';
+    document.getElementById('itemModal').style.display = 'flex';
+};
+
+document.getElementById('inCode').oninput = function() {
+    var val = this.value.trim();
+    if (catalog[val]) {
+        document.getElementById('inWood').value = catalog[val].wood || '';
+        document.getElementById('inLoc').value = catalog[val].loc || '';
+    }
+};
+
+document.getElementById('btnCancelItem').onclick = function() {
+    editIdx = null;
+    document.getElementById('itemModal').style.display = 'none';
+};
+document.getElementById('btnDeleteItem').onclick = function() {
+    if (editIdx === null || !curId || !db[curId]) return;
+    db[curId].items.splice(editIdx, 1);
+    editIdx = null;
+    saveStorage();
+    document.getElementById('itemModal').style.display = 'none';
+    renderDetail();
+};
+document.getElementById('btnConfirmItem').onclick = function() {
+    if (!curId || !db[curId]) return;
+    var code = document.getElementById('inCode').value.trim();
+    var wood = document.getElementById('inWood').value.trim();
+    var loc = document.getElementById('inLoc').value.trim();
+    var n = Number(document.getElementById('inN').value) || 0;
+    var s = Number(document.getElementById('inS').value) || 0;
+    if (!code || !wood || (n === 0 && s === 0)) return alert('請填色號、木名與至少一邊數量');
+
+    var finalLoc = loc || (catalog[code] && catalog[code].loc) || '';
+    catalog[code] = { wood: wood, loc: finalLoc };
+
+    if (editIdx !== null && db[curId].items[editIdx]) {
+        var old = db[curId].items[editIdx];
+        db[curId].items[editIdx] = {
+            code: code, wood: wood, loc: finalLoc, n: n, s: s,
+            nDone: n > 0 ? Boolean(old.nDone) : false,
+            sDone: s > 0 ? Boolean(old.sDone) : false
+        };
+    } else {
+        db[curId].items.push({ code: code, wood: wood, loc: finalLoc, n: n, s: s, nDone: false, sDone: false });
+    }
+    editIdx = null;
+    saveStorage();
+    document.getElementById('itemModal').style.display = 'none';
+    renderDetail();
+};
+
+document.getElementById('btnSaveCat').onclick = function() {
+    var c = document.getElementById('catCode').value.trim();
+    var w = document.getElementById('catWood').value.trim();
+    var l = document.getElementById('catLoc').value.trim();
+    if (!c || !w) return alert('請填寫色號與木名');
+    catalog[c] = { wood: w, loc: l };
+    saveStorage();
+    document.getElementById('catCode').value = '';
+    document.getElementById('catWood').value = '';
+    document.getElementById('catLoc').value = '';
+    renderCatalog();
+};
+
+try {
+    document.getElementById('catSearch').oninput = function() {
+        renderCatalog();
+    };
+
+    document.getElementById('btnClearBatchCat').onclick = function() {
+        document.getElementById('batchCatInput').value = '';
+    };
+
+    document.getElementById('btnImportBatchCat').onclick = function() {
+        var raw = (document.getElementById('batchCatInput').value || '').trim();
+        if (!raw) return alert('請先貼上要匯入的色號清單');
+        var lines = raw.split(/\r?\n/);
+        var count = 0;
+
+        lines.forEach(function(line) {
+            var trimmed = line.trim();
+            if (!trimmed) return;
+            var parts = trimmed.split(/[\t,]+|\s+/);
+            parts = parts.filter(function(p) { return p !== ''; });
+            if (parts.length < 2) return;
+            var code = parts[0].trim();
+            var loc = '';
+            var wood = '';
+
+            if (parts.length >= 3) {
+                var last = parts[parts.length - 1].trim();
+                if (/^[A-Za-z0-9_-]{1,8}$/.test(last) && parts.length > 2) {
+                    loc = last;
+                    wood = parts.slice(1, parts.length - 1).join(' ').trim();
+                } else {
+                    wood = parts.slice(1).join(' ').trim();
+                }
+            } else {
+                wood = parts[1].trim();
+            }
+
+            if (code && wood) {
+                catalog[code] = {
+                    wood: wood,
+                    loc: loc || (catalog[code] && catalog[code].loc) || ''
+                };
+                count++;
+            }
+        });
+
+        if (!count) return alert('沒有解析出有效的「色號 木名」資料');
+        saveStorage();
+        renderCatalog();
+        alert('已成功匯入 / 更新 ' + count + ' 筆色號對照');
+    };
+} catch (e) {}
+
+try {
+    document.getElementById('btnWidthList').onclick = function() {
+        document.getElementById('wColor').value = widths.color;
+        document.getElementById('wLoc').value = widths.loc;
+        document.getElementById('wM1').value = widths.m1;
+        document.getElementById('wM2').value = widths.m2;
+        document.getElementById('widthModal').style.display = 'flex';
+    };
+    document.getElementById('btnWidthDetail').onclick = function() {
+        document.getElementById('wColor').value = widths.color;
+        document.getElementById('wLoc').value = widths.loc;
+        document.getElementById('wM1').value = widths.m1;
+        document.getElementById('wM2').value = widths.m2;
+        document.getElementById('widthModal').style.display = 'flex';
+    };
+    document.getElementById('btnCancelWidth').onclick = function() {
+        document.getElementById('widthModal').style.display = 'none';
+    };
+    document.getElementById('btnConfirmWidth').onclick = function() {
+        widths.color = Number(document.getElementById('wColor').value) || 32;
+        widths.loc = Number(document.getElementById('wLoc').value) || 20;
+        widths.m1 = Number(document.getElementById('wM1').value) || 24;
+        widths.m2 = Number(document.getElementById('wM2').value) || 24;
+        applyWidths();
+        saveStorage();
+        document.getElementById('widthModal').style.display = 'none';
+    };
+} catch (e) {}
+
+try {
+    document.getElementById('btnExportOne').onclick = function() {
+        if (!curId || !db[curId]) return alert('找不到訂單');
+        var o = db[curId];
+        var items = o.items || [];
+        if (!items.length) return alert('此單尚無板材資料');
+        var csv = '\uFEFF訂單號,案名,出貨日期,色號,木名,儲位,Nesting數量,電子鋸數量\n';
+        items.forEach(function(it) {
+            var locVal = (catalog[it.code] && catalog[it.code].loc) || it.loc || '';
+            csv += '"' + curId + '","' + (o.project || '') + '","' + (o.date || '') + '","' + it.code + '","' + it.wood + '","' + locVal + '",' + (it.n || 0) + ',' + (it.s || 0) + '\n';
+        });
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = '訂單_' + curId + '.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    document.getElementById('btnExportAll').onclick = function() {
+        var keys = Object.keys(db);
+        var rows = [];
+        keys.forEach(function(id) {
+            var o = db[id] || {};
+            (o.items || []).forEach(function(it) {
+                var locVal = (catalog[it.code] && catalog[it.code].loc) || it.loc || '';
+                rows.push('"' + id + '","' + (o.project || '') + '","' + (o.date || '') + '","' + it.code + '","' + it.wood + '","' + locVal + '",' + (it.n || 0) + ',' + (it.s || 0));
+            });
+        });
+        if (!rows.length) return alert('目前沒有可匯出的訂單明細');
+        var csv = '\uFEFF訂單號,案名,出貨日期,色號,木名,儲位,Nesting數量,電子鋸數量\n' + rows.join('\n') + '\n';
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = '全部訂單分板總表.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+} catch (e) {}
+
+loadStorage();
+applyWidths();
+renderOrders();
+</script>
+</body>
+</html>
