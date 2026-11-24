@@ -6,25 +6,53 @@
     <title>系統櫃訂單分板系統</title>
     <style>
         * { box-sizing: border-box; font-family: "Microsoft JhengHei", sans-serif; }
-        body { margin: 0; padding: 20px 16px; background: #eef2f6; color: #1f2937; }
+        body { margin: 0; padding: 14px 12px; background: #eef2f6; color: #1f2937; }
         .wrap { max-width: 1050px; margin: 0 auto; }
-        .card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 18px; }
+        .card { background: #fff; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 14px; }
         .top-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+
+        /* 主按鈕與常用按鈕 */
         .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; color: #fff; background: #2563eb; }
         .btn-gray { background: #475569; }
         .btn-green { background: #059669; }
         .btn-purple { background: #7c3aed; }
-        .btn-amber { background: #d97706; padding: 6px 10px; font-size: 13px; }
         .btn-red { background: #ef4444; padding: 6px 10px; font-size: 13px; }
 
-        .tabs { display: flex; gap: 10px; margin-bottom: 16px; }
-        .tab { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; background: #cbd5e1; color: #334155; }
+        /* 低調次要工具按鈕（欄寬、匯出、修改單據） */
+        .btn-sub {
+            padding: 7px 11px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            color: #475569;
+            background: #f8fafc;
+        }
+        .btn-sub:hover { background: #e2e8f0; color: #1e293b; }
+        .btn-back-compact { padding: 7px 12px; font-size: 14px; }
+
+        /* 頂部操作區排版 */
+        .header-stack { display: flex; flex-direction: column; gap: 10px; }
+        .header-row-main { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .header-row-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .detail-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 0; }
+        .detail-title-text { font-size: 15px; font-weight: bold; color: #1e3a8a; line-height: 1.35; word-break: break-word; }
+
+        @media (max-width: 600px) {
+            .btn-primary-mobile { width: 100%; padding: 11px 16px; font-size: 15px; }
+            .tools-pair-mobile { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            .tools-pair-mobile .btn-sub { width: 100%; text-align: center; }
+        }
+
+        .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+        .tab { flex: 1; padding: 11px; border: none; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; background: #cbd5e1; color: #334155; }
         .tab.active { background: #1e3a8a; color: #fff; }
 
-        .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
-        .order-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; cursor: pointer; position: relative; }
+        .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+        .order-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; cursor: pointer; position: relative; }
         .order-box:hover { border-color: #2563eb; background: #eff6ff; }
-        .order-del-btn { position: absolute; top: 12px; right: 12px; background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; padding: 4px 9px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        .order-del-btn { position: absolute; top: 10px; right: 10px; background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
 
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th, td { padding: 11px 6px; border-bottom: 1px solid #e2e8f0; text-align: center; font-size: 15px; vertical-align: middle; word-break: break-word; }
@@ -67,12 +95,14 @@
 
     <div id="secOrders">
         <div id="listView">
-            <div class="card top-bar">
-                <h2 style="margin:0;">訂單分板管理</h2>
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <button type="button" id="btnNewOrder" class="btn">➕ 新建訂單</button>
-                    <button type="button" id="btnWidthList" class="btn btn-gray">⚙️ 機台欄寬</button>
-                    <button type="button" id="btnExportAll" class="btn btn-green">匯出全部 CSV</button>
+            <div class="card header-stack">
+                <div class="header-row-main">
+                    <h2 style="margin:0; font-size:19px;">訂單分板管理</h2>
+                    <button type="button" id="btnNewOrder" class="btn btn-primary-mobile">➕ 新建訂單</button>
+                </div>
+                <div class="header-row-tools tools-pair-mobile">
+                    <button type="button" id="btnWidthList" class="btn-sub">⚙️ 機台欄寬</button>
+                    <button type="button" id="btnExportAll" class="btn-sub">📤 匯出全部 CSV</button>
                 </div>
             </div>
             <div class="card">
@@ -81,16 +111,20 @@
         </div>
 
         <div id="detailView" style="display:none;">
-            <div class="card top-bar">
-                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px;">
-                    <button type="button" id="btnBack" class="btn btn-gray">← 返回</button>
-                    <strong id="detailTitle" style="font-size:16px; color:#1e3a8a;"></strong>
-                    <button type="button" id="btnEditOrder" class="btn btn-amber">✏️ 修改單據</button>
+            <div class="card header-stack">
+                <div class="header-row-main">
+                    <div class="detail-meta">
+                        <button type="button" id="btnBack" class="btn btn-gray btn-back-compact">← 返回</button>
+                        <span id="detailTitle" class="detail-title-text"></span>
+                    </div>
+                    <button type="button" id="btnEditOrder" class="btn-sub">✏️ 修改單據</button>
                 </div>
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <button type="button" id="btnAddItem" class="btn">➕ 加入色號</button>
-                    <button type="button" id="btnWidthDetail" class="btn btn-gray">⚙️ 機台欄寬</button>
-                    <button type="button" id="btnExportOne" class="btn btn-green">匯出此單 CSV</button>
+                <div class="header-row-main">
+                    <button type="button" id="btnAddItem" class="btn btn-primary-mobile">➕ 加入色號</button>
+                    <div class="header-row-tools tools-pair-mobile">
+                        <button type="button" id="btnWidthDetail" class="btn-sub">⚙️ 機台欄寬</button>
+                        <button type="button" id="btnExportOne" class="btn-sub">📤 匯出此單</button>
+                    </div>
                 </div>
             </div>
             <div class="card" style="padding:0; overflow-x:auto;">
@@ -113,9 +147,9 @@
         <div class="card">
             <div class="top-bar" style="margin-bottom:12px;">
                 <h3 style="margin:0;">新增 / 修改 色號對照</h3>
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <button type="button" id="btnNewCatList" class="btn btn-green">➕ 新建清單</button>
-                    <button type="button" id="btnExportCat" class="btn btn-gray">匯出對照 CSV</button>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" id="btnNewCatList" class="btn-sub" style="color:#059669; border-color:#a7f3d0; background:#ecfdf5;">➕ 批次清單</button>
+                    <button type="button" id="btnExportCat" class="btn-sub">📤 匯出對照</button>
                 </div>
             </div>
             <div class="row2" style="flex-wrap:wrap;">
@@ -377,7 +411,7 @@ function openDetail(id) {
     const o = db[id];
     document.getElementById('listView').style.display = 'none';
     document.getElementById('detailView').style.display = 'block';
-    document.getElementById('detailTitle').textContent = '[' + id + '] ' + (o.project || '未命名') + '｜出貨日期：' + (o.date || '未定');
+    document.getElementById('detailTitle').textContent = '[' + id + '] ' + (o.project || '未命名') + '｜出貨：' + (o.date || '未定');
     renderDetail();
 }
 
@@ -500,7 +534,7 @@ function confirmEditOrder() {
     db[curId].project = document.getElementById('editProject').value.trim();
     db[curId].date = document.getElementById('editDate').value;
     saveAll();
-    document.getElementById('detailTitle').textContent = '[' + curId + '] ' + (db[curId].project || '未命名') + '｜出貨日期：' + (db[curId].date || '未定');
+    document.getElementById('detailTitle').textContent = '[' + curId + '] ' + (db[curId].project || '未命名') + '｜出貨：' + (db[curId].date || '未定');
     closeEditOrderModal();
 }
 
