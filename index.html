@@ -67,8 +67,10 @@
         .modal-card { background: #fff; width: 100%; max-width: 440px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto; }
         .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; flex: 1; }
         label { font-size: 13px; font-weight: bold; color: #475569; }
-        input { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; width: 100%; background: #fff; }
+        input, textarea { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; width: 100%; background: #fff; }
+        textarea { min-height: 110px; font-size: 14px; line-height: 1.45; resize: vertical; }
         .row2 { display: flex; gap: 10px; }
+        .catalog-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
     </style>
 </head>
 <body>
@@ -146,8 +148,26 @@
                 </div>
             </div>
         </div>
+
         <div class="card">
-            <h3 style="margin-top:0;">已建檔色號（<span id="catCount">0</span>）</h3>
+            <h3 style="margin-top:0;">批次貼上匯入色號對照</h3>
+            <div class="field" style="margin-bottom:10px;">
+                <label>每行一筆（支援空白、Tab 或逗號分隔；儲位可省略）：色號 木名 [儲位]</label>
+                <textarea id="batchCatInput" placeholder="例如：&#10;H3303 漢密爾頓橡木 A01&#10;701 雪白 A02&#10;U999 炭黑 B01"></textarea>
+            </div>
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" id="btnClearBatchCat" class="btn btn-gray" style="padding:8px 14px; font-size:14px;">清空</button>
+                <button type="button" id="btnImportBatchCat" class="btn" style="padding:8px 14px; font-size:14px;">批次匯入</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="catalog-toolbar">
+                <h3 style="margin:0;">已建檔色號（<span id="catCount">0</span>）</h3>
+                <div style="flex:1; min-width:220px; max-width:340px;">
+                    <input type="text" id="catSearch" placeholder="搜尋色號、木名或儲位...">
+                </div>
+            </div>
             <table>
                 <thead>
                     <tr>
@@ -446,10 +466,25 @@ function openEditItem(idx) {
 }
 
 function renderCatalog() {
-    var keys = Object.keys(catalog);
-    document.getElementById('catCount').textContent = keys.length;
+    var searchEl = document.getElementById('catSearch');
+    var kw = searchEl ? (searchEl.value || '').trim().toLowerCase() : '';
+    var keys = Object.keys(catalog).filter(function(c) {
+        if (!kw) return true;
+        var info = catalog[c] || {};
+        return c.toLowerCase().indexOf(kw) !== -1 ||
+            (info.wood || '').toLowerCase().indexOf(kw) !== -1 ||
+            (info.loc || '').toLowerCase().indexOf(kw) !== -1;
+    });
+
+    document.getElementById('catCount').textContent = kw ? (keys.length + ' / ' + Object.keys(catalog).length) : keys.length;
     var tbody = document.getElementById('catBody');
     tbody.innerHTML = '';
+
+    if (!keys.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:#64748b; padding:18px;">找不到符合的色號</td></tr>';
+        return;
+    }
+
     keys.forEach(function(c) {
         var info = catalog[c];
         var tr = document.createElement('tr');
@@ -620,6 +655,60 @@ document.getElementById('btnSaveCat').onclick = function() {
     document.getElementById('catLoc').value = '';
     renderCatalog();
 };
+
+/* 獨立區塊 D：色號對照表搜尋與批次貼上匯入 */
+try {
+    document.getElementById('catSearch').oninput = function() {
+        renderCatalog();
+    };
+
+    document.getElementById('btnClearBatchCat').onclick = function() {
+        document.getElementById('batchCatInput').value = '';
+    };
+
+    document.getElementById('btnImportBatchCat').onclick = function() {
+        var raw = (document.getElementById('batchCatInput').value || '').trim();
+        if (!raw) return alert('請先貼上要匯入的色號清單');
+        var lines = raw.split(/\r?\n/);
+        var count = 0;
+
+        lines.forEach(function(line) {
+            var trimmed = line.trim();
+            if (!trimmed) return;
+            var parts = trimmed.split(/[\t,]+|\s+/);
+            parts = parts.filter(function(p) { return p !== ''; });
+            if (parts.length < 2) return;
+            var code = parts[0].trim();
+            var loc = '';
+            var wood = '';
+
+            if (parts.length >= 3) {
+                var last = parts[parts.length - 1].trim();
+                if (/^[A-Za-z0-9_-]{1,8}$/.test(last) && parts.length > 2) {
+                    loc = last;
+                    wood = parts.slice(1, parts.length - 1).join(' ').trim();
+                } else {
+                    wood = parts.slice(1).join(' ').trim();
+                }
+            } else {
+                wood = parts[1].trim();
+            }
+
+            if (code && wood) {
+                catalog[code] = {
+                    wood: wood,
+                    loc: loc || (catalog[code] && catalog[code].loc) || ''
+                };
+                count++;
+            }
+        });
+
+        if (!count) return alert('沒有解析出有效的「色號 木名」資料');
+        saveStorage();
+        renderCatalog();
+        alert('已成功匯入 / 更新 ' + count + ' 筆色號對照');
+    };
+} catch (e) {}
 
 try {
     document.getElementById('btnWidthList').onclick = function() {
