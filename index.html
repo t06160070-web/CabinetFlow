@@ -11,6 +11,8 @@
         .card { background: #fff; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 14px; }
         .top-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
 
+        button { touch-action: manipulation; }
+
         /* 主按鈕與常用按鈕 */
         .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; color: #fff; background: #2563eb; }
         .btn-gray { background: #475569; }
@@ -586,8 +588,15 @@ function closeItemModal() {
 }
 
 function onTypeColor() {
-    const kw = document.getElementById('inCode').value.trim().toLowerCase();
+    const rawVal = document.getElementById('inCode').value.trim();
+    const kw = rawVal.toLowerCase();
     const box = document.getElementById('typeColorList');
+
+    if (catalog[rawVal]) {
+        document.getElementById('inWood').value = catalog[rawVal].wood || '';
+        document.getElementById('inLoc').value = catalog[rawVal].loc || '';
+    }
+
     if (!kw) {
         box.style.display = 'none';
         return;
@@ -721,40 +730,44 @@ function saveCatalogItem() {
 }
 
 function renderCatalog() {
-    const kw = document.getElementById('catSearch').value.trim().toLowerCase();
+    const kw = (document.getElementById('catSearch').value || '').trim().toLowerCase();
+    const allKeys = Object.keys(catalog);
     const entries = Object.entries(catalog).filter(([c, info]) =>
+        !kw ||
         c.toLowerCase().includes(kw) ||
         (info.wood || '').toLowerCase().includes(kw) ||
         (info.loc || '').toLowerCase().includes(kw)
     );
-    document.getElementById('catCount').textContent = Object.keys(catalog).length;
+
+    document.getElementById('catCount').textContent = kw ? (entries.length + ' / ' + allKeys.length) : entries.length;
     const tbody = document.getElementById('catBody');
     tbody.innerHTML = '';
 
     if (!entries.length) {
-        tbody.innerHTML = '<tr><td colspan="4" style="color:#94a3b8;">尚無色號對照</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="color:#64748b; padding:18px;">找不到符合的色號</td></tr>';
         return;
     }
 
     entries.forEach(([c, info]) => {
         const tr = document.createElement('tr');
-        const tdC = document.createElement('td');
-        tdC.className = 'col-color';
-        tdC.innerHTML = '<strong>' + c + '</strong>';
-        tdC.style.cursor = 'pointer';
-        tdC.onclick = () => {
+
+        const tdCode = document.createElement('td');
+        tdCode.className = 'col-color';
+        tdCode.style.cursor = 'pointer';
+        tdCode.innerHTML = '<strong>' + c + '</strong>';
+        tdCode.onclick = () => {
             document.getElementById('catCode').value = c;
             document.getElementById('catWood').value = info.wood || '';
             document.getElementById('catLoc').value = info.loc || '';
             document.getElementById('catLoc').focus();
         };
 
-        const tdW = document.createElement('td');
-        tdW.className = 'col-color';
-        tdW.textContent = info.wood || '';
+        const tdWood = document.createElement('td');
+        tdWood.className = 'col-color';
+        tdWood.textContent = info.wood || '';
 
-        const tdL = document.createElement('td');
-        tdL.innerHTML = info.loc ? '<span class="loc-badge">' + info.loc + '</span>' : '<span style="color:#94a3b8;">-</span>';
+        const tdLoc = document.createElement('td');
+        tdLoc.innerHTML = info.loc ? '<span class="loc-badge">' + info.loc + '</span>' : '<span style="color:#94a3b8;">-</span>';
 
         const tdAct = document.createElement('td');
         const delBtn = document.createElement('button');
@@ -762,95 +775,64 @@ function renderCatalog() {
         delBtn.className = 'btn btn-red';
         delBtn.textContent = '刪除';
         delBtn.onclick = () => {
+            if (!confirm('確定要刪除色號「' + c + '」嗎？')) return;
             delete catalog[c];
             saveAll();
             renderCatalog();
         };
-
         tdAct.appendChild(delBtn);
-        tr.appendChild(tdC);
-        tr.appendChild(tdW);
-        tr.appendChild(tdL);
+
+        tr.appendChild(tdCode);
+        tr.appendChild(tdWood);
+        tr.appendChild(tdLoc);
         tr.appendChild(tdAct);
         tbody.appendChild(tr);
     });
 }
 
-function dl(csv, name) {
+function downloadCsv(filename, csvContent) {
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    a.download = name;
+    a.href = url;
+    a.download = filename;
     a.click();
+    URL.revokeObjectURL(url);
 }
 
-function exportCatalog() {
-    const entries = Object.entries(catalog);
-    if (!entries.length) return alert('無色號對照資料');
-    let csv = '\uFEFF色號,木名,儲位\n';
-    entries.forEach(([c, info]) => csv += '"' + c + '","' + (info.wood || '') + '","' + (info.loc || '') + '"\n');
-    dl(csv, '色號對照表.csv');
-}
-
-function exportOne() {
+function exportOneCsv() {
+    if (!curId || !db[curId]) return alert('找不到訂單');
     const o = db[curId];
-    if (!o || !o.items || !o.items.length) return alert('無資料');
-    let csv = '\uFEFF訂單號,案名,出貨日期,色號,木名,儲位,Nesting數量,電子鋸數量\n';
-    o.items.forEach(i => csv += '"' + curId + '","' + (o.project || '') + '","' + (o.date || '') + '","' + i.code + '","' + i.wood + '","' + getItemLoc(i) + '",' + (i.n || '') + ',' + (i.s || '') + '\n');
-    dl(csv, '訂單_' + curId + '.csv');
-}
-
-function exportAll() {
-    const keys = Object.keys(db);
-    if (!keys.length) return alert('無資料');
-    let csv = '\uFEFF訂單號,案名,出貨日期,色號,木名,儲位,Nesting數量,電子鋸數量\n';
-    keys.forEach(id => {
-        const o = db[id] || {};
-        (o.items || []).forEach(i => csv += '"' + id + '","' + (o.project || '') + '","' + (o.date || '') + '","' + i.code + '","' + i.wood + '","' + getItemLoc(i) + '",' + (i.n || '') + ',' + (i.s || '') + '\n');
+    const items = o.items || [];
+    if (!items.length) return alert('此單尚無板材資料');
+    let csv = '訂單號,案名,出貨日期,色號,木名,儲位,Nesting數量,電子鋸數量\n';
+    items.forEach(it => {
+        csv += '"' + curId + '","' + (o.project || '') + '","' + (o.date || '') + '","' + it.code + '","' + it.wood + '","' + getItemLoc(it) + '",' + (it.n || 0) + ',' + (it.s || 0) + '\n';
     });
-    dl(csv, '全部訂單總表.csv');
+    downloadCsv('訂單_' + curId + '.csv', csv);
 }
 
-function openCamModal() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        return alert('目前瀏覽器或環境不支援相機掃描');
-    }
-    document.getElementById('camModal').style.display = 'flex';
-    document.getElementById('camStatus').textContent = '啟動鏡頭中...';
-    camActive = true;
-
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        .then(stream => {
-            camStream = stream;
-            const video = document.getElementById('camVideo');
-            video.srcObject = stream;
-            video.play();
-            document.getElementById('camStatus').textContent = '請對準 QR Code';
-            requestAnimationFrame(scanFrame);
-        })
-        .catch(() => {
-            alert('無法開啟相機，請檢查權限設定');
-            closeCamModal();
+function exportAllCsv() {
+    const rows = [];
+    Object.keys(db).forEach(id => {
+        const o = db[id] || {};
+        (o.items || []).forEach(it => {
+            rows.push('"' + id + '","' + (o.project || '') + '","' + (o.date || '') + '","' + it.code + '","' + it.wood + '","' + getItemLoc(it) + '",' + (it.n || 0) + ',' + (it.s || 0));
         });
+    });
+    if (!rows.length) return alert('目前沒有可匯出的訂單明細');
+    downloadCsv('全部訂單分板總表.csv', '訂單號,案名,出貨日期,色號,木名,儲位,Nesting數量,電子鋸數量\n' + rows.join('\n') + '\n');
 }
 
-function scanFrame() {
-    if (!camActive) return;
-    const video = document.getElementById('camVideo');
-    if (video.readyState === video.HAVE_ENOUGH_DATA && typeof window.jsQR === 'function') {
-        const canvas = document.getElementById('camCanvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = window.jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
-        if (code && code.data && code.data.trim()) {
-            document.getElementById('inOrderId').value = code.data.trim();
-            closeCamModal();
-            return;
-        }
-    }
-    if (camActive) requestAnimationFrame(scanFrame);
+function exportCatalogCsv() {
+    const keys = Object.keys(catalog);
+    if (!keys.length) return alert('目前沒有可匯出的色號對照');
+    let csv = '色號,木名,儲位\n';
+    keys.forEach(c => {
+        const info = catalog[c] || {};
+        csv += '"' + c + '","' + (info.wood || '') + '","' + (info.loc || '') + '"\n';
+    });
+    downloadCsv('色號對照表.csv', csv);
 }
 
 function closeCamModal() {
@@ -859,57 +841,83 @@ function closeCamModal() {
         camStream.getTracks().forEach(t => t.stop());
         camStream = null;
     }
-    const video = document.getElementById('camVideo');
-    if (video) video.srcObject = null;
+    const vid = document.getElementById('camVideo');
+    if (vid) vid.srcObject = null;
     document.getElementById('camModal').style.display = 'none';
 }
 
-[
-    ['tabOrders', () => switchTab('orders')],
-    ['tabCatalog', () => switchTab('catalog')],
-    ['btnNewOrder', openOrderModal],
-    ['btnWidthList', openWidthModal],
-    ['btnExportAll', exportAll],
-    ['btnBack', backToList],
-    ['btnEditOrder', openEditOrderModal],
-    ['btnAddItem', openItemModal],
-    ['btnWidthDetail', openWidthModal],
-    ['btnExportOne', exportOne],
-    ['btnNewCatList', openCatalogListModal],
-    ['btnExportCat', exportCatalog],
-    ['btnSaveCat', saveCatalogItem],
-    ['btnOpenCam', openCamModal],
-    ['btnCancelOrder', closeOrderModal],
-    ['btnConfirmOrder', confirmOrder],
-    ['btnDeleteItem', deleteCurrentItem],
-    ['btnCancelItem', closeItemModal],
-    ['btnConfirmItem', confirmItem],
-    ['btnCancelWidth', closeWidthModal],
-    ['btnConfirmWidth', confirmWidths],
-    ['btnCloseCam', closeCamModal],
-    ['btnCancelCatList', closeCatalogListModal],
-    ['btnConfirmCatList', confirmCatalogList],
-    ['btnCancelEditOrder', closeEditOrderModal],
-    ['btnConfirmEditOrder', confirmEditOrder]
-].forEach(([id, fn]) => {
+async function openCamModal() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        return alert('此瀏覽器不支援相機掃描，請直接輸入訂單號');
+    }
+    document.getElementById('camStatus').textContent = '正在啟動鏡頭...';
+    document.getElementById('camModal').style.display = 'flex';
+    camActive = true;
     try {
-        const el = document.getElementById(id);
-        if (el) el.onclick = fn;
-    } catch (e) {}
-});
+        camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        const vid = document.getElementById('camVideo');
+        vid.srcObject = camStream;
+        document.getElementById('camStatus').textContent = '請將 QR Code 對準鏡頭';
+        if ('BarcodeDetector' in window) {
+            const detector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'code_39'] });
+            const scanLoop = async () => {
+                if (!camActive) return;
+                try {
+                    const codes = await detector.detect(vid);
+                    if (codes && codes.length > 0 && codes[0].rawValue) {
+                        document.getElementById('inOrderId').value = codes[0].rawValue.trim();
+                        closeCamModal();
+                        return;
+                    }
+                } catch (e) {}
+                requestAnimationFrame(scanLoop);
+            };
+            requestAnimationFrame(scanLoop);
+        } else {
+            document.getElementById('camStatus').textContent = '目前瀏覽器無內建條碼偵測，請直接輸入單號';
+        }
+    } catch (err) {
+        document.getElementById('camStatus').textContent = '無法開啟鏡頭或已拒絕權限';
+    }
+}
 
-try { document.getElementById('catSearch').oninput = renderCatalog; } catch (e) {}
-try { document.getElementById('inCode').oninput = onTypeColor; } catch (e) {}
-try { applyWidths(); } catch (e) {}
-try { renderOrders(); } catch (e) {}
+document.getElementById('tabOrders').onclick = () => switchTab('orders');
+document.getElementById('tabCatalog').onclick = () => switchTab('catalog');
 
-setTimeout(() => {
-    try {
-        const qrScript = document.createElement('script');
-        qrScript.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
-        document.body.appendChild(qrScript);
-    } catch (e) {}
-}, 500);
+document.getElementById('btnNewOrder').onclick = openOrderModal;
+document.getElementById('btnCancelOrder').onclick = closeOrderModal;
+document.getElementById('btnConfirmOrder').onclick = confirmOrder;
+document.getElementById('btnOpenCam').onclick = openCamModal;
+document.getElementById('btnCloseCam').onclick = closeCamModal;
+
+document.getElementById('btnBack').onclick = backToList;
+document.getElementById('btnEditOrder').onclick = openEditOrderModal;
+document.getElementById('btnCancelEditOrder').onclick = closeEditOrderModal;
+document.getElementById('btnConfirmEditOrder').onclick = confirmEditOrder;
+
+document.getElementById('btnAddItem').onclick = openItemModal;
+document.getElementById('btnCancelItem').onclick = closeItemModal;
+document.getElementById('btnDeleteItem').onclick = deleteCurrentItem;
+document.getElementById('btnConfirmItem').onclick = confirmItem;
+document.getElementById('inCode').oninput = onTypeColor;
+
+document.getElementById('btnWidthList').onclick = openWidthModal;
+document.getElementById('btnWidthDetail').onclick = openWidthModal;
+document.getElementById('btnCancelWidth').onclick = closeWidthModal;
+document.getElementById('btnConfirmWidth').onclick = confirmWidths;
+
+document.getElementById('btnSaveCat').onclick = saveCatalogItem;
+document.getElementById('btnNewCatList').onclick = openCatalogListModal;
+document.getElementById('btnCancelCatList').onclick = closeCatalogListModal;
+document.getElementById('btnConfirmCatList').onclick = confirmCatalogList;
+document.getElementById('btnExportCat').onclick = exportCatalogCsv;
+document.getElementById('catSearch').oninput = renderCatalog;
+
+document.getElementById('btnExportOne').onclick = exportOneCsv;
+document.getElementById('btnExportAll').onclick = exportAllCsv;
+
+applyWidths();
+renderOrders();
 </script>
 </body>
 </html>
