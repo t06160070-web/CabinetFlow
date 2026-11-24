@@ -12,25 +12,16 @@
         .top-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
 
         button { touch-action: manipulation; }
-
         .btn { padding: 10px 16px; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; color: #fff; background: #2563eb; }
-        .btn:active { opacity: 0.85; }
         .btn-gray { background: #475569; }
         .btn-green { background: #059669; }
         .btn-purple { background: #7c3aed; }
         .btn-red { background: #ef4444; padding: 6px 10px; font-size: 13px; }
 
         .btn-sub {
-            padding: 7px 11px;
-            border: 1px solid #cbd5e1;
-            border-radius: 7px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            color: #475569;
-            background: #f8fafc;
+            padding: 7px 11px; border: 1px solid #cbd5e1; border-radius: 7px;
+            font-size: 13px; font-weight: 600; cursor: pointer; color: #475569; background: #f8fafc;
         }
-        .btn-sub:hover { background: #e2e8f0; color: #1e293b; }
         .btn-back-compact { padding: 7px 12px; font-size: 14px; }
 
         .header-stack { display: flex; flex-direction: column; gap: 10px; }
@@ -57,7 +48,6 @@
 
         .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
         .order-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; cursor: pointer; position: relative; }
-        .order-box:hover { border-color: #2563eb; background: #eff6ff; }
         .order-del-btn { position: absolute; top: 10px; right: 10px; background: #fee2e2; color: #dc2626; border: none; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: bold; cursor: pointer; }
 
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -68,13 +58,11 @@
         th.th-m2 { background: #fef3c7; color: #92400e; }
         .sum-row td { background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; }
 
-        .color-edit-cell { cursor: pointer; transition: background 0.15s; }
-        .color-edit-cell:hover { background: #eff6ff; }
+        .color-edit-cell { cursor: pointer; }
         .loc-badge { display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; font-weight: bold; font-size: 13px; padding: 3px 8px; border-radius: 6px; }
 
-        .prep-cell { cursor: pointer; user-select: none; transition: background 0.15s, color 0.15s; }
-        .prep-cell:hover { filter: brightness(0.96); }
-        .prep-done { background: #e2e8f0 !important; color: #94a3b8 !important; }
+        .prep-cell { cursor: pointer; user-select: none; }
+        .prep-done { background: #e2e8f0; color: #94a3b8; }
         .prep-done strong { color: #94a3b8; text-decoration: line-through; }
 
         .code-line { display: block; font-size: 14px; font-weight: bold; color: #111827; line-height: 1.3; }
@@ -89,7 +77,6 @@
 
         .type-list { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; max-height: 180px; overflow-y: auto; z-index: 30; box-shadow: 0 6px 14px rgba(0,0,0,0.12); }
         .type-item { padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px; }
-        .type-item:hover { background: #eff6ff; }
     </style>
 </head>
 <body>
@@ -103,4 +90,30 @@
         <div id="listView">
             <div class="card header-stack">
                 <div class="header-row-main">
-                    <h2
+                    <h2 style="margin:0; font-size:19px;">訂單分板管理</h2>
+                    <button type="button" id="btnNewOrder" class="btn btn-primary-mobile">➕ 新建訂單</button>
+                </div>
+                <div class="header-row-tools tools-pair-mobile">
+                    <button type="button" id="btnWidthList" class="btn-sub">⚙️ 機台欄寬</button>
+                    <button type="button" id="btnExportAll" class="btn-sub">📤 匯出全部 CSV</button>
+                </div>
+            </div>
+            <div class="card">
+                <div id="orderList" class="order-grid"></div>
+            </div>
+        </div>
+
+        <div id="detailView" style="display:none;">
+            <div class="card header-stack">
+                <div class="detail-top-bar">
+                    <div class="detail-left">
+                        <button type="button" id="btnBack" class="btn btn-gray btn-back-compact">← 返回</button>
+                        <div class="detail-info-stack">
+                            <div id="detailOrderId" class="detail-order-id"></div>
+                            <div class="detail-sub-meta">
+                                <span id="detailProject" class="detail-project"></span>
+                                <span id="detailDate" class="detail-date"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" id="btnEditOrder" class="btn
