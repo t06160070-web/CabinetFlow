@@ -65,22 +65,10 @@
 
         .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); justify-content: center; align-items: center; padding: 16px; z-index: 999; }
         .modal-card { background: #fff; width: 100%; max-width: 440px; padding: 20px; border-radius: 12px; max-height: 90vh; overflow-y: auto; }
-        .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; flex: 1; position: relative; }
+        .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; flex: 1; }
         label { font-size: 13px; font-weight: bold; color: #475569; }
         input { padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; width: 100%; background: #fff; }
         .row2 { display: flex; gap: 10px; }
-
-        .type-list {
-            display: none; position: absolute; top: 100%; left: 0; right: 0;
-            background: #fff; border: 1px solid #cbd5e1; border-radius: 8px;
-            max-height: 190px; overflow-y: auto; z-index: 40;
-            box-shadow: 0 6px 14px rgba(0,0,0,0.14);
-        }
-        .type-item {
-            padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9;
-            display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px;
-        }
-        .type-item:hover { background: #eff6ff; }
     </style>
 </head>
 <body>
@@ -143,3 +131,346 @@
                     <tbody id="detailBody"></tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <div id="secCatalog" style="display:none;">
+        <div class="card">
+            <h3 style="margin-top:0;">新增 / 修改 色號對照</h3>
+            <div class="row2" style="flex-wrap:wrap;">
+                <div class="field"><label>色號 *</label><input type="text" id="catCode" placeholder="例: H3303"></div>
+                <div class="field"><label>木名 *</label><input type="text" id="catWood" placeholder="例: 漢密爾頓橡木"></div>
+                <div class="field"><label>儲位</label><input type="text" id="catLoc" placeholder="例: A01"></div>
+                <div style="display:flex; align-items:flex-end; margin-bottom:12px;">
+                    <button type="button" id="btnSaveCat" class="btn">儲存</button>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <h3 style="margin-top:0;">已建檔色號（<span id="catCount">0</span>）</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="col-color" style="width:26%;">色號</th>
+                        <th class="col-color" style="width:36%;">木名</th>
+                        <th style="width:20%;">儲位</th>
+                        <th style="width:18%;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="catBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 彈窗1：新建訂單 -->
+<div id="orderModal" class="modal-bg">
+    <div class="modal-card">
+        <h3 style="margin-top:0;">建立新訂單</h3>
+        <div class="field"><label>訂單號 *</label><input type="text" id="inOrderId" placeholder="輸入單號"></div>
+        <div class="field"><label>案名</label><input type="text" id="inProject"></div>
+        <div class="field"><label>出貨日期</label><input type="date" id="inDate"></div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" id="btnCancelOrder" class="btn btn-gray">取消</button>
+            <button type="button" id="btnConfirmOrder" class="btn">確定建立</button>
+        </div>
+    </div>
+</div>
+
+<!-- 彈窗2：修改單據 -->
+<div id="editOrderModal" class="modal-bg">
+    <div class="modal-card">
+        <h3 style="margin-top:0;">修改訂單資訊</h3>
+        <div class="field"><label>案名</label><input type="text" id="editProject"></div>
+        <div class="field"><label>出貨日期</label><input type="date" id="editDate"></div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" id="btnCancelEditOrder" class="btn btn-gray">取消</button>
+            <button type="button" id="btnConfirmEditOrder" class="btn">儲存修改</button>
+        </div>
+    </div>
+</div>
+
+<!-- 彈窗3：加入 / 修改 色號 -->
+<div id="itemModal" class="modal-bg">
+    <div class="modal-card">
+        <h3 id="itemModalTitle" style="margin-top:0;">加入板材色號</h3>
+        <div class="field">
+            <label>色號 *</label>
+            <input type="text" id="inCode" autocomplete="off" placeholder="輸入色號（例: H3303、701、U999）">
+        </div>
+        <div class="row2">
+            <div class="field" style="flex:2;"><label>木名 *</label><input type="text" id="inWood" autocomplete="off" placeholder="例: 漢密爾頓橡木"></div>
+            <div class="field" style="flex:1;"><label>儲位</label><input type="text" id="inLoc" autocomplete="off" placeholder="例: A01"></div>
+        </div>
+        <div class="row2">
+            <div class="field"><label>Nesting 數</label><input type="number" id="inN" min="0" inputmode="numeric"></div>
+            <div class="field"><label>電子鋸 數</label><input type="number" id="inS" min="0" inputmode="numeric"></div>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:space-between; align-items:center;">
+            <button type="button" id="btnDeleteItem" class="btn btn-red" style="display:none;">刪除此筆</button>
+            <div style="display:flex; gap:10px; margin-left:auto;">
+                <button type="button" id="btnCancelItem" class="btn btn-gray">取消</button>
+                <button type="button" id="btnConfirmItem" class="btn">確認儲存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 彈窗4：機台欄寬微調 -->
+<div id="widthModal" class="modal-bg">
+    <div class="modal-card">
+        <h3 style="margin-top:0;">微調欄位寬度 (%)</h3>
+        <div class="row2">
+            <div class="field"><label>色號/木名 (%)</label><input type="number" id="wColor" min="15" max="60" inputmode="numeric"></div>
+            <div class="field"><label>儲位 (%)</label><input type="number" id="wLoc" min="8" max="40" inputmode="numeric"></div>
+        </div>
+        <div class="row2">
+            <div class="field"><label>Nesting (%)</label><input type="number" id="wM1" min="10" max="60" inputmode="numeric"></div>
+            <div class="field"><label>電子鋸 (%)</label><input type="number" id="wM2" min="10" max="60" inputmode="numeric"></div>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button type="button" id="btnCancelWidth" class="btn btn-gray">取消</button>
+            <button type="button" id="btnConfirmWidth" class="btn">套用</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var db = {};
+var catalog = {
+    'H3303': { wood: '漢密爾頓橡木', loc: 'A01' },
+    '701': { wood: '雪白', loc: 'A02' },
+    'U999': { wood: '炭黑', loc: 'B01' }
+};
+var widths = { color: 32, m1: 24, loc: 20, m2: 24 };
+var curId = null;
+var editIdx = null;
+
+function normalizeCatalog(raw) {
+    var out = {};
+    if (!raw || typeof raw !== 'object') return out;
+    Object.keys(raw).forEach(function(c) {
+        var v = raw[c];
+        if (typeof v === 'string') out[c] = { wood: v, loc: '' };
+        else if (v && typeof v === 'object') out[c] = { wood: v.wood || '', loc: v.loc || '' };
+    });
+    return out;
+}
+
+function loadStorage() {
+    try {
+        var rawDb = localStorage.getItem('boardSystemDB_v5');
+        if (rawDb) {
+            var parsedDb = JSON.parse(rawDb);
+            if (parsedDb && typeof parsedDb === 'object') db = parsedDb;
+        }
+    } catch (e) {}
+
+    try {
+        var rawCat = localStorage.getItem('boardSystemCatalog_v5');
+        if (rawCat) {
+            var parsedCat = normalizeCatalog(JSON.parse(rawCat));
+            if (Object.keys(parsedCat).length > 0) catalog = parsedCat;
+        }
+    } catch (e) {}
+
+    try {
+        var rawW = localStorage.getItem('boardSystemWidths_v6');
+        if (rawW) {
+            var parsedW = JSON.parse(rawW);
+            if (parsedW && typeof parsedW === 'object') {
+                if (parsedW.color) widths.color = Number(parsedW.color);
+                if (parsedW.m1) widths.m1 = Number(parsedW.m1);
+                if (parsedW.loc) widths.loc = Number(parsedW.loc);
+                if (parsedW.m2) widths.m2 = Number(parsedW.m2);
+            }
+        }
+    } catch (e) {}
+}
+
+function saveStorage() {
+    try {
+        localStorage.setItem('boardSystemDB_v5', JSON.stringify(db));
+        localStorage.setItem('boardSystemCatalog_v5', JSON.stringify(catalog));
+        localStorage.setItem('boardSystemWidths_v6', JSON.stringify(widths));
+    } catch (e) {}
+}
+
+function applyWidths() {
+    document.getElementById('thColor').style.width = widths.color + '%';
+    document.getElementById('thLoc').style.width = widths.loc + '%';
+    document.getElementById('thM1').style.width = widths.m1 + '%';
+    document.getElementById('thM2').style.width = widths.m2 + '%';
+}
+
+function switchTab(t) {
+    document.getElementById('secOrders').style.display = t === 'orders' ? 'block' : 'none';
+    document.getElementById('secCatalog').style.display = t === 'catalog' ? 'block' : 'none';
+    document.getElementById('tabOrders').className = t === 'orders' ? 'tab active' : 'tab';
+    document.getElementById('tabCatalog').className = t === 'catalog' ? 'tab active' : 'tab';
+    if (t === 'catalog') renderCatalog();
+    if (t === 'orders' && !curId) renderOrders();
+}
+
+function renderOrders() {
+    var wrap = document.getElementById('orderList');
+    var keys = Object.keys(db).reverse();
+    if (!keys.length) {
+        wrap.innerHTML = '<div style="color:#64748b;">尚無訂單，點「+ 新建訂單」開始。</div>';
+        return;
+    }
+    wrap.innerHTML = '';
+    keys.forEach(function(id) {
+        var o = db[id] || { items: [] };
+        var nSum = 0, sSum = 0;
+        (o.items || []).forEach(function(it) {
+            nSum += Number(it.n) || 0;
+            sSum += Number(it.s) || 0;
+        });
+
+        var box = document.createElement('div');
+        box.className = 'order-box';
+        box.onclick = function() { openDetail(id); };
+
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'order-del-btn';
+        delBtn.textContent = '刪除';
+        delBtn.onclick = function(ev) {
+            if (ev && ev.stopPropagation) ev.stopPropagation();
+            if (!confirm('確定要刪除訂單「' + id + '」嗎？')) return;
+            delete db[id];
+            saveStorage();
+            renderOrders();
+        };
+
+        var titleDiv = document.createElement('div');
+        titleDiv.style.cssText = 'font-weight:800; color:#1e3a8a; font-size:16px; padding-right:44px;';
+        titleDiv.textContent = id;
+
+        var infoDiv = document.createElement('div');
+        infoDiv.style.cssText = 'font-size:13px; color:#475569; margin-top:4px; line-height:1.45;';
+        infoDiv.innerHTML = '案名：' + (o.project || '未命名') + '｜出貨：' + (o.date || '未定') + '<br>Nesting：<strong>' + nSum + '</strong>｜電子鋸：<strong>' + sSum + '</strong>';
+
+        box.appendChild(delBtn);
+        box.appendChild(titleDiv);
+        box.appendChild(infoDiv);
+        wrap.appendChild(box);
+    });
+}
+
+function renderDetailHeader(id, o) {
+    document.getElementById('detailOrderId').textContent = id;
+    document.getElementById('detailProject').textContent = '案名：' + (o.project || '未命名');
+    document.getElementById('detailDate').textContent = '出貨：' + (o.date || '未定');
+}
+
+function openDetail(id) {
+    curId = id;
+    document.getElementById('listView').style.display = 'none';
+    document.getElementById('detailView').style.display = 'block';
+    renderDetailHeader(id, db[id]);
+    renderDetail();
+}
+
+function renderDetail() {
+    var tbody = document.getElementById('detailBody');
+    var items = (db[curId] && db[curId].items) || [];
+    var nSum = 0, sSum = 0;
+    tbody.innerHTML = '';
+
+    items.forEach(function(it, idx) {
+        var nVal = Number(it.n) || 0;
+        var sVal = Number(it.s) || 0;
+        var locVal = (catalog[it.code] && catalog[it.code].loc) || it.loc || '';
+        nSum += nVal;
+        sSum += sVal;
+
+        var tr = document.createElement('tr');
+
+        var tdC = document.createElement('td');
+        tdC.className = 'col-color color-edit-cell';
+        tdC.innerHTML = '<span class="code-line">' + it.code + '</span><span class="wood-subline">' + it.wood + '</span>';
+        tdC.onclick = function() { openEditItem(idx); };
+
+        var tdN = document.createElement('td');
+        tdN.innerHTML = '<strong>' + (nVal || '-') + '</strong>';
+        if (nVal > 0) {
+            tdN.className = it.nDone ? 'prep-cell prep-done' : 'prep-cell';
+            tdN.onclick = function() {
+                it.nDone = !it.nDone;
+                saveStorage();
+                renderDetail();
+            };
+        }
+
+        var tdL = document.createElement('td');
+        tdL.innerHTML = locVal ? '<span class="loc-badge">' + locVal + '</span>' : '-';
+
+        var tdS = document.createElement('td');
+        tdS.innerHTML = '<strong>' + (sVal || '-') + '</strong>';
+        if (sVal > 0) {
+            tdS.className = it.sDone ? 'prep-cell prep-done' : 'prep-cell';
+            tdS.onclick = function() {
+                it.sDone = !it.sDone;
+                saveStorage();
+                renderDetail();
+            };
+        }
+
+        tr.appendChild(tdC);
+        tr.appendChild(tdN);
+        tr.appendChild(tdL);
+        tr.appendChild(tdS);
+        tbody.appendChild(tr);
+    });
+
+    var sumTr = document.createElement('tr');
+    sumTr.className = 'sum-row';
+    sumTr.innerHTML = '<td class="col-color">合計</td><td>' + nSum + ' 片</td><td></td><td>' + sSum + ' 片</td>';
+    tbody.appendChild(sumTr);
+}
+
+function openEditItem(idx) {
+    var it = db[curId].items[idx];
+    if (!it) return;
+    editIdx = idx;
+    document.getElementById('itemModalTitle').textContent = '修改板材色號與數量';
+    document.getElementById('btnDeleteItem').style.display = 'inline-block';
+    document.getElementById('inCode').value = it.code;
+    document.getElementById('inWood').value = it.wood;
+    document.getElementById('inLoc').value = (catalog[it.code] && catalog[it.code].loc) || it.loc || '';
+    document.getElementById('inN').value = it.n || '';
+    document.getElementById('inS').value = it.s || '';
+    document.getElementById('itemModal').style.display = 'flex';
+}
+
+function renderCatalog() {
+    var keys = Object.keys(catalog);
+    document.getElementById('catCount').textContent = keys.length;
+    var tbody = document.getElementById('catBody');
+    tbody.innerHTML = '';
+    keys.forEach(function(c) {
+        var info = catalog[c];
+        var tr = document.createElement('tr');
+
+        var tdC = document.createElement('td');
+        tdC.className = 'col-color';
+        tdC.style.cursor = 'pointer';
+        tdC.innerHTML = '<strong>' + c + '</strong>';
+        tdC.onclick = function() {
+            document.getElementById('catCode').value = c;
+            document.getElementById('catWood').value = info.wood || '';
+            document.getElementById('catLoc').value = info.loc || '';
+            document.getElementById('catLoc').focus();
+        };
+
+        var tdW = document.createElement('td');
+        tdW.className = 'col-color';
+        tdW.textContent = info.wood || '';
+
+        var tdL = document.createElement('td');
+        tdL.innerHTML = info.loc ? '<span class="loc-badge">' + info.loc + '</span>' : '-';
+
+        var tdAct = document.createElement('td');
+        var delBtn
