@@ -38,8 +38,13 @@
         .header-stack { display: flex; flex-direction: column; gap: 10px; }
         .header-row-main { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
         .header-row-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .detail-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 0; }
-        .detail-title-text { font-size: 15px; font-weight: bold; color: #1e3a8a; line-height: 1.35; word-break: break-word; }
+
+        /* 明細頁紅框四列結構：操作列 -> 單號 -> 案名 -> 出貨日期 */
+        .detail-meta-stack { display: flex; flex-direction: column; gap: 6px; }
+        .detail-action-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .detail-order-row { font-size: 17px; font-weight: 800; color: #1e3a8a; line-height: 1.35; word-break: break-word; }
+        .detail-project-row { font-size: 14.5px; font-weight: 700; color: #1f2937; line-height: 1.4; word-break: break-word; }
+        .detail-date-row { font-size: 13.5px; font-weight: 600; color: #475569; line-height: 1.4; }
 
         @media (max-width: 600px) {
             .btn-primary-mobile { width: 100%; padding: 11px 16px; font-size: 15px; }
@@ -114,12 +119,14 @@
 
         <div id="detailView" style="display:none;">
             <div class="card header-stack">
-                <div class="header-row-main">
-                    <div class="detail-meta">
+                <div class="detail-meta-stack">
+                    <div class="detail-action-row">
                         <button type="button" id="btnBack" class="btn btn-gray btn-back-compact">← 返回</button>
-                        <span id="detailTitle" class="detail-title-text"></span>
+                        <button type="button" id="btnEditOrder" class="btn-sub">✏️ 修改單據</button>
                     </div>
-                    <button type="button" id="btnEditOrder" class="btn-sub">✏️ 修改單據</button>
+                    <div id="detailOrderNo" class="detail-order-row"></div>
+                    <div id="detailProjectText" class="detail-project-row"></div>
+                    <div id="detailDateText" class="detail-date-row"></div>
                 </div>
                 <div class="header-row-main">
                     <button type="button" id="btnAddItem" class="btn btn-primary-mobile">➕ 加入色號</button>
@@ -407,13 +414,19 @@ function renderOrders() {
     });
 }
 
+function updateDetailHeader(id, o) {
+    const orderData = o || {};
+    document.getElementById('detailOrderNo').textContent = '[' + id + ']';
+    document.getElementById('detailProjectText').textContent = '案名：' + (orderData.project || '未命名');
+    document.getElementById('detailDateText').textContent = '出貨：' + (orderData.date || '未定');
+}
+
 function openDetail(id) {
     if (!db[id]) return;
     curId = id;
-    const o = db[id];
     document.getElementById('listView').style.display = 'none';
     document.getElementById('detailView').style.display = 'block';
-    document.getElementById('detailTitle').textContent = '[' + id + '] ' + (o.project || '未命名') + '｜出貨：' + (o.date || '未定');
+    updateDetailHeader(id, db[id]);
     renderDetail();
 }
 
@@ -536,7 +549,7 @@ function confirmEditOrder() {
     db[curId].project = document.getElementById('editProject').value.trim();
     db[curId].date = document.getElementById('editDate').value;
     saveAll();
-    document.getElementById('detailTitle').textContent = '[' + curId + '] ' + (db[curId].project || '未命名') + '｜出貨：' + (db[curId].date || '未定');
+    updateDetailHeader(curId, db[curId]);
     closeEditOrderModal();
 }
 
